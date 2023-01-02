@@ -113,10 +113,21 @@ class Lexer:
             case "+": token.kind = TokenKind.PLUS
             case "-": token.kind = TokenKind.DASH
             case "*": token.kind = TokenKind.ASTERISK
-            case "/": token.kind = TokenKind.SLASH_FORWARD
             case ":": token.kind = TokenKind.COLON
             case "(": token.kind = TokenKind.LPAREN
             case ")": token.kind = TokenKind.RPAREN
+            case "/": 
+                match self.peek():
+                    #comments are covered here
+                    case "/":
+                        #reads until the next line
+                        _, _ = self.get_characters_until(lambda x: x != "\n")
+                        #if at eof dont even try and give them a token
+                        if not self.advance():
+                            return Token(self.row, self.col, TokenKind.EOF)
+                        #return the next token after the comment
+                        return self.next()
+                    case _: token.kind = TokenKind.SLASH_FORWARD
             case "!":
                 match self.peek():
                     case "=":
