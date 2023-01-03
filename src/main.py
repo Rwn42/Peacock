@@ -1,5 +1,6 @@
 import sys
-from lexer import Lexer, TokenKind, Token
+from lexer import *
+from compiler import *
 
 def main():
     source_file = sys.argv[1]
@@ -7,12 +8,15 @@ def main():
     f = open(source_file)
     lexer = Lexer(f.read())
     f.close()
-    
-    while True:
-        tk = lexer.next()
-        if tk.kind == TokenKind.EOF:
-            break
-        print(tk)
+
+    # token = lexer.next()
+    # while token.kind != TokenKind.EOF:
+    #     print(token)
+    #     counter += 1
+    #     token = lexer.next()
+
+    c = Compiler(lexer)
+    print(c.compile_until(until=[TokenKind.EOF]))
 
 
 

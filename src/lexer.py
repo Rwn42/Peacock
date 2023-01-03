@@ -116,6 +116,7 @@ class Lexer:
             case ":": token.kind = TokenKind.COLON
             case "(": token.kind = TokenKind.LPAREN
             case ")": token.kind = TokenKind.RPAREN
+            case ",": token.kind = TokenKind.COMMA
             case "/": 
                 match self.peek():
                     #comments are covered here
