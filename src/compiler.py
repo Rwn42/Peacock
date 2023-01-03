@@ -11,13 +11,22 @@ class Opcodes(Enum):
     MUL = auto()  #operand is exponent ne -1 functions as division
     EQ = auto()  #operand is value to be pushed if true -1 functions as !=
     CALL = auto() #index into function array inwhich to be called
+    MVLV = auto() #operand index of local variable to be moved
+    PSLV = auto()
 
 # f("hi") == 2
 class Compiler:
+    expression_tokens = [
+                        TokenKind.IDENTIFIER, TokenKind.PLUS, TokenKind.DASH,
+                        TokenKind.ASTERISK, TokenKind.SLASH_FORWARD,
+                        TokenKind.LPAREN, TokenKind.RPAREN,
+                        TokenKind.LITERAL_INT, TokenKind.LITERAL_STR,
+                    ]
     def __init__(self, lexer:Lexer):
         self.lexer = lexer
         self.program: list[Operation] = []
         self.functions = {"func": 10}
+        self.locals = {"var": 0}
     
     def compile_until(self, until: list[TokenKind], whitelist: list[TokenKind] = None, blacklist: list[TokenKind] = None) -> list[Operation]:
         res = []
@@ -50,17 +59,31 @@ class Compiler:
                 case TokenKind.IDENTIFIER:
                     match self.lexer.peek_next_token().kind:
                         #function call
-                        case TokenKind.LPAREN: res.extend(self.compile_function_call(token))
+                        case TokenKind.LPAREN:
+                            params = self.compile_until(until=[TokenKind.RPAREN], whitelist=[TokenKind.COMMA].extend(Compiler.expression_tokens))
+                            res.extend(params.reverse())
+                            res.append(Operation(Opcodes.CALL, self.functions[token.value]))
+                            _ = self.lexer.next()
                         #variable assignment
-                        case TokenKind.SINGLE_EQUAL: pass
+                        case TokenKind.SINGLE_EQUAL:
+                            _ = self.lexer.next()
+                            lhs = (self.compile_until(until=[TokenKind.SEMICOLON], whitelist=Compiler.expression_tokens))
+                            if token.value in self.locals:
+                                res.extend(lhs)
+                                res.append(Operation(Opcodes.MVLV, self.locals[token.value]))
+                            else:
+                                res.extend(lhs)
+                                self.locals[token.value] = len(self.locals.keys())
+                                res.append(Operation(Opcodes.MVLV, self.locals[token.value]))
                         #variable / constant usage
-                        case _: self.push_identifier_value(self.lexer.peek_next_token().value)
+                        case _: res.extend(self.push_identifier_value(token.value))
                 case _: pass
 
     #given and identifier generate push instruction with identifier value
     #may be a constant, variable ect.
-    def push_identifier_value(self, id: str):
-        pass
+    def push_identifier_value(self, identifier: str):
+        if identifier in self.locals:
+            return Operation(Opcodes.PSLV, self.locals[identifier])
     
     def compile_function_call(self, token: Token):
         res = []
@@ -70,12 +93,7 @@ class Compiler:
             while True:
                 result = self.compile_until(
                     until=[TokenKind.COMMA, TokenKind.RPAREN], 
-                    whitelist=[
-                        TokenKind.IDENTIFIER, TokenKind.PLUS, TokenKind.DASH,
-                        TokenKind.ASTERISK, TokenKind.SLASH_FORWARD,
-                        TokenKind.LPAREN, TokenKind.RPAREN,
-                        TokenKind.LITERAL_INT, TokenKind.LITERAL_STR,
-                    ]
+                    whitelist=Compiler.expression_tokens
                 )
                 params.append(result)
                 if self.lexer.peek_next_token().kind == TokenKind.RPAREN:

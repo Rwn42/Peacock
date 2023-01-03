@@ -18,6 +18,7 @@ class TokenKind(Enum):
     COMMA = auto()
     SINGLE_EQUAL = auto()
     COLON = auto()
+    SEMICOLON = auto()
     DOUBLE_EQUAL = auto()
     NOT_EQUAL = auto()
     GREATER_THAN = auto()
@@ -116,6 +117,7 @@ class Lexer:
             case ":": token.kind = TokenKind.COLON
             case "(": token.kind = TokenKind.LPAREN
             case ")": token.kind = TokenKind.RPAREN
+            case ";": token.kind = TokenKind.SEMICOLON
             case ",": token.kind = TokenKind.COMMA
             case "/": 
                 match self.peek():
