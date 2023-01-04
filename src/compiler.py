@@ -20,6 +20,7 @@ class Compiler:
         self.strings = []
         self.data_written = 8
         self.linear_memory = []
+        self.loops_added = 0
         self.linear_memory_head = 0
         self.environment = "wasi_unstable"
     
@@ -79,6 +80,18 @@ class Compiler:
                         _ = self.lexer.next()
                         result.append(")")
                     result.append(")")
+                case TokenKind.WHILE:
+                    condition = self.compile_until([TokenKind.DO], None)
+                    _ = self.lexer.next()
+                    body = self.compile_until([TokenKind.END], None)
+                    _ = self.lexer.next()
+                    loop_num = self.loops_added
+                    result.append(f"(loop ${loop_num}_loop")
+                    result.extend(body)
+                    result.extend(condition)
+                    result.append(f"br_if ${loop_num}_loop")
+                    result.append(")")
+                    self.loops_added += 1
                 case TokenKind.PROC:
                     if self.lexer.peek_next_token().kind != TokenKind.IDENTIFIER:
                         print("Error Expected Identifier after procedure defintion")
@@ -167,7 +180,7 @@ class Compiler:
                             if self.lexer.peek_next_token().kind == TokenKind.SINGLE_EQUAL:
                                 
                                 _ = self.lexer.next()
-                                assignment_expression = self.compile_until([TokenKind.END], Compiler.expression_tokens)
+                                assignment_expression = self.compile_until([TokenKind.END, TokenKind.SEMICOLON], Compiler.expression_tokens)
                                 #consume the end
                                 _ = self.lexer.next()
                                 result.extend(assignment_expression)
@@ -182,7 +195,7 @@ class Compiler:
                         #variable assingment
                         case TokenKind.SINGLE_EQUAL:
                             _ = self.lexer.next()
-                            assignment_expression = self.compile_until([TokenKind.END], Compiler.expression_tokens)
+                            assignment_expression = self.compile_until([TokenKind.END, TokenKind.SEMICOLON], Compiler.expression_tokens)
                             _ = self.lexer.next()
                             result.extend(assignment_expression)
                             result.append(f"local.set ${token.value}")

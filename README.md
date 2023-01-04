@@ -38,10 +38,19 @@ else
 end
 ```
 
+### While Loop
+```
+i: int = 10;
+while i < 10 do
+    i = i 1 +
+end
+```
+
 ### Variables
 declaration: `name:type` <br>
-assignment: `name = expression` <br>
-declaration and assignment: `name:type = expression`
+assignment: `name = expression end` <br>
+declaration and assignment: `name:type = expression end`
+**Instead of `end` `;` is also supported to end variable assignments**
 
 ### Functions
 ```
