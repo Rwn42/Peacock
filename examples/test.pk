@@ -1,5 +1,9 @@
 extern fd_write(x, y, z, w) int end
 
+proc another() int do
+    fd_write("Hello\n",  1, 0, 1, 20)
+end
+
 proc main() do
     2 3 + == 4 2 + do
         fd_write("makes sense\n", 1, 0, 1, 20)
@@ -8,4 +12,5 @@ proc main() do
         fd_write("does not make sense\n", 1, 0, 1, 20)
         drop
     end
+    another() drop
 end

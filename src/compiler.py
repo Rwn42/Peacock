@@ -74,6 +74,7 @@ class Compiler:
                     if self.lexer.next().kind == TokenKind.ELSE:
                         result.append("(else")
                         result.extend(self.compile_until([TokenKind.END], whitelist=None))
+                        _ = self.lexer.next()
                         result.append(")")
                     result.append(")")
                 case TokenKind.PROC:
@@ -102,6 +103,8 @@ class Compiler:
                             sys.exit()
                     
                     body = self.compile_until([TokenKind.END], None)
+                    #consume the end
+                    _ = self.lexer.next()
                     result.extend(body)
                     result.append(")")
                 case TokenKind.EXTERN:
@@ -180,6 +183,7 @@ class Compiler:
             next_tk = self.lexer.next()
         return params
 
+    #saves the program to a .wat file
     def save(self, program: list[str]):
         with open("output.wat", "w") as f:
             f.write("(module\n")
