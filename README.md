@@ -3,7 +3,7 @@ Stack-based, concatenative language that compiles (hopefully) to wasi compliant 
 
 ## The Hello World
 ```
-extern fd_write(x, y, z, w) int end
+extern fd_write(x:int, y:int, z:int, w:int) int end
 
 proc main() do
     _:int = fd_write("Hello, world\n", 1, 0, 1, 20)
