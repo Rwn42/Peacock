@@ -165,12 +165,16 @@ class Compiler:
                             var_type = self.lexer.next().kind
                             var = Variable(token.value, var_type)
                             if self.lexer.peek_next_token().kind == TokenKind.SINGLE_EQUAL:
+                                
                                 _ = self.lexer.next()
                                 assignment_expression = self.compile_until([TokenKind.END], Compiler.expression_tokens)
                                 #consume the end
                                 _ = self.lexer.next()
                                 result.extend(assignment_expression)
-                                result.append(f"local.set ${token.value}")
+                                if token.value == "_":
+                                    result.append("drop")
+                                else:
+                                    result.append(f"local.set ${token.value}")
                             #add the variable declaration to the current function
                             functions = list(self.defined_functions.keys())
                             name = functions[len(functions)-1]
@@ -196,6 +200,7 @@ class Compiler:
                 case TokenKind.DROP: result.append("drop") 
                 case TokenKind.EOF: return result
                 case TokenKind.END: pass
+                case TokenKind.IF: pass
                 case TokenKind.COMMA: pass
                 case _:
                     print(token)
