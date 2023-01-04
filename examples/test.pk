@@ -1,7 +1,9 @@
-extern fd_write(x, y, z, w) int end
+extern fd_write(x:int, y:int, z:int, w:int) int end
 
-proc another() int do
+proc another(x:int) int do
     fd_write("Hello\n",  1, 0, 1, 20)
+    b: int
+    b = 10 end
 end
 
 proc main() do
@@ -12,5 +14,5 @@ proc main() do
         fd_write("does not make sense\n", 1, 0, 1, 20)
         drop
     end
-    another() drop
+    another(10) drop
 end

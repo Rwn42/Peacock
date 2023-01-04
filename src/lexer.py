@@ -36,6 +36,7 @@ class TokenKind(Enum):
     EXTERN = auto()
     TYPE_INT = auto()
     TYPE_STR = auto()
+    TYPE_FLOAT = auto()
     EOF = auto()
     IDENTIFIER = auto()
 
@@ -190,6 +191,7 @@ class Lexer:
                     case "String": token.kind = TokenKind.TYPE_STR
                     case "drop": token.kind = TokenKind.DROP
                     case "extern": token.kind = TokenKind.EXTERN
+                    case "float": token.kind = TokenKind.TYPE_FLOAT
                     case _:
                         token.kind = TokenKind.IDENTIFIER
         

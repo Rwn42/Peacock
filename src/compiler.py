@@ -3,6 +3,8 @@ from collections import namedtuple
 from enum import Enum, auto
 import sys
 
+Variable = namedtuple("Variable", "name type")
+
 class Compiler:
     expression_tokens = [
         TokenKind.LPAREN, TokenKind.RPAREN, TokenKind.LITERAL_INT, TokenKind.LITERAL_STR,
@@ -12,7 +14,7 @@ class Compiler:
     def __init__(self, lexer:Lexer):
         self.lexer = lexer
         #this can just contain names
-        self.defined_functions = []
+        self.defined_functions:dict[str, list[Variable]] = {}
         #these must be full function signatures
         self.imported_functions = []
         self.strings = []
@@ -84,41 +86,58 @@ class Compiler:
                         sys.exit()
 
                     name = self.lexer.next().value
-                    self.defined_functions.append(name)
+                    self.defined_functions[name] = []
 
                     params = self.function_parameters()
+                    #some sort of shallow copy behaviour means i need
+                    #a copy of this array at this point
+                    params2 = [p for p in params]
+
 
                     result.append(f"(func ${name} ")
-                    result.extend(["(param i32) " for _ in range(params)])
-
+                    result.extend([f"(param ${p.name} {self.type_from_token_type(p.type)}) " for p in params])
+                    self.defined_functions[name] = params
+                    
                     next_tk = self.lexer.next()
                     match next_tk.kind:
                         case TokenKind.TYPE_INT:
                             result.append("(result i32)") 
                             #consume the do
                             _ = self.lexer.next()
+                        case TokenKind.TYPE_FLOAT:
+                            result.append("(result f32)") 
+                            #consume the do
+                            _ = self.lexer.next()
                         case TokenKind.DO: pass
                         case _:
                             print(f"Non return type found {next_tk}")
                             sys.exit()
-                    
+            
                     body = self.compile_until([TokenKind.END], None)
                     #consume the end
                     _ = self.lexer.next()
+                    for var in self.defined_functions[name]:
+                        if var in params2:
+                            continue
+                        result.append(f"(local ${var.name} {self.type_from_token_type(var.type)}) ")
                     result.extend(body)
                     result.append(")")
                 case TokenKind.EXTERN:
                     name = self.lexer.next().value
                     signature = []
-                    self.defined_functions.append(name)
+                    self.defined_functions[name] = []
                     params = self.function_parameters()
                     signature.append(f'(import "{self.environment}" "{name}" (func ${name} ')
-                    signature.extend(["(param i32) " for _ in range(params)])
+                    signature.extend([f"(param {self.type_from_token_type(p.type)}) " for p in params])
                     next_tk = self.lexer.next()
                     match next_tk.kind:
                         case TokenKind.TYPE_INT:
                             signature.append("(result i32)") 
                             #consume the end
+                            _ = self.lexer.next()
+                        case TokenKind.TYPE_FLOAT:
+                            result.append("(result f32)") 
+                            #consume the do
                             _ = self.lexer.next()
                         case TokenKind.END: pass
                         case _:
@@ -127,16 +146,53 @@ class Compiler:
                     signature.append("))")
                     self.imported_functions.append("".join(signature))
                 case TokenKind.IDENTIFIER:
-                    match self.lexer.next().kind:
+                    match self.lexer.peek_next_token().kind:
                         #function call
                         case TokenKind.LPAREN:
-                            if token.value not in self.defined_functions:
+                            _ = self.lexer.next()
+                            if token.value not in self.defined_functions.keys():
                                 print(f"Undeclared function {token}")
                                 sys.exit()
                             params = self.compile_until([TokenKind.RPAREN], Compiler.expression_tokens.extend([TokenKind.COMMA]))
                             self.lexer.next()
                             result.extend(params)
                             result.append(f"call ${token.value}")
+
+                        #variable declaration
+                        case TokenKind.COLON:
+                            #consume the colon
+                            _ = self.lexer.next()
+                            var_type = self.lexer.next().kind
+                            var = Variable(token.value, var_type)
+                            if self.lexer.peek_next_token().kind == TokenKind.SINGLE_EQUAL:
+                                _ = self.lexer.next()
+                                assignment_expression = self.compile_until([TokenKind.END], Compiler.expression_tokens)
+                                #consume the end
+                                _ = self.lexer.next()
+                                result.extend(assignment_expression)
+                                result.append(f"local.set ${token.value}")
+                            #add the variable declaration to the current function
+                            functions = list(self.defined_functions.keys())
+                            name = functions[len(functions)-1]
+                            self.defined_functions[name].append(var)
+                        #variable assingment
+                        case TokenKind.SINGLE_EQUAL:
+                            _ = self.lexer.next()
+                            assignment_expression = self.compile_until([TokenKind.END], Compiler.expression_tokens)
+                            _ = self.lexer.next()
+                            result.extend(assignment_expression)
+                            result.append(f"local.set ${token.value}")
+                        #variable/constant usage not defintion or function call
+                        case _:
+                            #find what function we in
+                            functions = list(self.defined_functions.keys())
+                            name = functions[len(functions)-1]
+
+                            #check for local variable
+                            for n in self.defined_functions[name]:
+                                if n.name == token.value:
+                                    result.append(f"local.get ${token.value}")
+                                    break
                 case TokenKind.DROP: result.append("drop") 
                 case TokenKind.EOF: return result
                 case TokenKind.END: pass
@@ -163,7 +219,7 @@ class Compiler:
 
     #returns number of function parameters once we have type support
     #will return associated type as well 
-    def function_parameters(self) -> int:
+    def function_parameters(self) -> list[Variable]:
         if self.lexer.peek_next_token().kind != TokenKind.LPAREN:
             print(f"Unexpected Token {self.lexer.next()} expected (")
             sys.exit()
@@ -171,10 +227,15 @@ class Compiler:
         _ = self.lexer.next()
 
         next_tk = self.lexer.next()
-        params = 0
+        params = []
         while True:
             match next_tk.kind:
-                case TokenKind.IDENTIFIER: params += 1
+                case TokenKind.IDENTIFIER:
+                    if self.lexer.next().kind != TokenKind.COLON:
+                        print(f"Unexpected Token In Procedure Defenition {next_tk} expected :<type>")
+                        sys.exit()
+                    param_type = self.lexer.next().kind
+                    params.append(Variable(next_tk.value, param_type))
                 case TokenKind.COMMA: pass
                 case TokenKind.RPAREN: break
                 case _:
@@ -182,6 +243,14 @@ class Compiler:
                     sys.exit()
             next_tk = self.lexer.next()
         return params
+    
+    def type_from_token_type(self, type: TokenKind) -> str:
+        match type:
+            case TokenKind.TYPE_INT: return "i32"
+            case TokenKind.TYPE_FLOAT: return "f32"
+            case _:
+                print(f"Error: unknown type {type}")
+                sys.exit()
 
     #saves the program to a .wat file
     def save(self, program: list[str]):
@@ -198,11 +267,11 @@ class Compiler:
             f.write(")")
             for substring in program:
                 f.write(f"  {substring}\n")
-            for i, name in enumerate(self.defined_functions):
+            for i, name in enumerate(self.defined_functions.keys()):
                 if name == "main":
                     f.write(f"(start {i})\n")
                     break
             else:
                 print("No main function declared... please declare one.")
             f.write(")")
-        
+    
