@@ -1,3 +1,7 @@
-func(2 8 +, 3 7 -)
+2 3 + == 4 1 + do
+    77
+end
 
-myvar = 10;
+proc main() do
+
+end

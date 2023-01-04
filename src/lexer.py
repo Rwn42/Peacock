@@ -27,6 +27,7 @@ class TokenKind(Enum):
     GREATER_THAN_EQUAL = auto()
     EXCLAMATION_MARK = auto()
     IF = auto()
+    ELSE = auto()
     WHILE = auto()
     END = auto()
     DO = auto()
@@ -178,6 +179,7 @@ class Lexer:
                     case "do": token.kind = TokenKind.DO
                     case "end": token.kind = TokenKind.END
                     case "while": token.kind = TokenKind.WHILE
+                    case "else": token.kind = TokenKind.ELSE
                     case _:
                         token.kind = TokenKind.IDENTIFIER
         

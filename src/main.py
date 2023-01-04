@@ -12,11 +12,11 @@ def main():
     # token = lexer.next()
     # while token.kind != TokenKind.EOF:
     #     print(token)
-    #     counter += 1
     #     token = lexer.next()
-
+        
     c = Compiler(lexer)
-    print(c.compile_until(until=[TokenKind.EOF]))
+    program = c.compile_until(until=[TokenKind.EOF], whitelist=None)
+    c.save(program)
 
 
 
