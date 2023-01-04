@@ -33,6 +33,7 @@ class TokenKind(Enum):
     DO = auto()
     PROC = auto()
     DROP = auto()
+    EXTERN = auto()
     TYPE_INT = auto()
     TYPE_STR = auto()
     EOF = auto()
@@ -170,7 +171,7 @@ class Lexer:
                 token.value = val
                 self.advance()
             case _:
-                val, _ = self.get_characters_until(lambda x: x.isalnum())
+                val, _ = self.get_characters_until(lambda x: x.isalnum() or x == "_")
                 token.value = val
         #token may be keyword or number literal at this point
         if token.kind == TokenKind.IDENTIFIER:
@@ -188,6 +189,7 @@ class Lexer:
                     case "int": token.kind = TokenKind.TYPE_INT
                     case "String": token.kind = TokenKind.TYPE_STR
                     case "drop": token.kind = TokenKind.DROP
+                    case "extern": token.kind = TokenKind.EXTERN
                     case _:
                         token.kind = TokenKind.IDENTIFIER
         
