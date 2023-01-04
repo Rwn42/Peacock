@@ -31,6 +31,10 @@ class TokenKind(Enum):
     WHILE = auto()
     END = auto()
     DO = auto()
+    PROC = auto()
+    DROP = auto()
+    TYPE_INT = auto()
+    TYPE_STR = auto()
     EOF = auto()
     IDENTIFIER = auto()
 
@@ -180,6 +184,10 @@ class Lexer:
                     case "end": token.kind = TokenKind.END
                     case "while": token.kind = TokenKind.WHILE
                     case "else": token.kind = TokenKind.ELSE
+                    case "proc": token.kind = TokenKind.PROC
+                    case "int": token.kind = TokenKind.TYPE_INT
+                    case "String": token.kind = TokenKind.TYPE_STR
+                    case "drop": token.kind = TokenKind.DROP
                     case _:
                         token.kind = TokenKind.IDENTIFIER
         

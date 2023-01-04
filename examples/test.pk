@@ -1,7 +1,3 @@
-2 3 + == 4 1 + do
-    77
-end
-
 proc main() do
-
+    2 3 +
 end
