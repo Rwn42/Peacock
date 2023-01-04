@@ -41,9 +41,9 @@ class Compiler:
                     code = self.linear_store(self.data_written, 0)
                     
                     #without offset it will be automatically calculated
-                    code.extend(self.linear_store(len(token.value)-1))
+                    code.extend(self.linear_store(len(token.value)-1, 4))
                     result.extend(code)
-                    self.data_written += len(token.value)
+                    self.data_written += len(token.value)-1
                 case TokenKind.LITERAL_INT: result.append(f"i32.const {token.value}")
                 case TokenKind.PLUS: result.append("i32.add")
                 case TokenKind.DASH: result.append("i32.sub")
@@ -148,7 +148,7 @@ class Compiler:
         result = ["(i32.store "]
 
         #this constant is the offset in linear memory to store
-        if not offset:
+        if offset is None:
             result.append(f"(i32.const {self.linear_memory_head})")
         else:
             result.append(f"(i32.const {offset})")

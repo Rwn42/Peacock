@@ -1,7 +1,7 @@
 extern fd_write(x, y, z, w) int end
 
 proc main() do
-    2 3 + == 4 1 + do
+    2 3 + == 4 2 + do
         fd_write("makes sense\n", 1, 0, 1, 20)
         drop
     else
