@@ -1,7 +1,16 @@
-extern puts(x: int, y: int) end
+extern puts(x:int, y:int) end
+extern puti(x:int) end
 
-b : float : 10
+MyConst: int : 10 2 +;
+
+proc add(x: int, y: int) int do
+    return x y +
+end
 
 pub proc main() do
-    puts("Hello, World")
+    i: int = 0;
+    while i < 10 do
+        puti(i)
+        i = add(i, 1);
+    end
 end

@@ -1,6 +1,6 @@
 import sys
 from lexer import *
-from compiler import *
+from compiler2 import *
 
 def main():
     source_file = sys.argv[1]
@@ -15,9 +15,8 @@ def main():
     #     token = lexer.next()
         
     c = Compiler(lexer, "env")
-    program = c.compile_until(until=[TokenKind.EOF], whitelist=None)
-    print(program)
-    c.save(program)
+    c.compile_file()
+    c.save()
 
 
 

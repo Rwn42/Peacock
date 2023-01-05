@@ -31,6 +31,7 @@ class TokenKind(Enum):
     IF = auto()
     ELSE = auto()
     WHILE = auto()
+    RETURN = auto()
     END = auto()
     DO = auto()
     PROC = auto()
@@ -212,6 +213,7 @@ class Lexer:
                     case "struct": token.kind = TokenKind.STRUCT
                     case "true" | "false": token.kind = TokenKind.LITERAL_BOOL
                     case "bool": token.kind = TokenKind.TYPE_BOOL
+                    case "return": token.kind = TokenKind.RETURN
                     case _:
                         token.kind = TokenKind.IDENTIFIER
         

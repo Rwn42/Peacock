@@ -72,6 +72,11 @@ class Function:
         return "".join(result)
 
 class Compiler:
+    comparison_operators = [
+        TokenKind.DOUBLE_EQUAL, TokenKind.NOT_EQUAL,
+        TokenKind.LESS_THAN, TokenKind.LESS_THAN_EQUAL,
+        TokenKind.GREATER_THAN, TokenKind.GREATER_THAN_EQUAL,
+    ]
     def __init__(self, lexer:Lexer, environment: str):
         self.lexer = lexer
         self.environment = environment
@@ -316,6 +321,9 @@ class Compiler:
                     result.append(f"{self.types[type_]}.ge_u")
                 
                 #control flow
+                case TokenKind.IF:
+                    code, _ = self.compile_expression(Compiler.comparison_operators)
+                    result.extend(code)
                 case TokenKind.DO:
                     result.append("(if\n(then")
                     result.extend(self.compile_until([TokenKind.END, TokenKind.ELSE]))
@@ -364,10 +372,12 @@ class Compiler:
                         case TokenKind.LPAREN | _:
                             code, type_ = self.use_declared_identifier(token)
                             result.extend(code)
-                
-                case _:
-                    code, _ = self.compile_expression([TokenKind.END], token)
+                case TokenKind.RETURN:
+                    code, _ = self.compile_expression([TokenKind.END, TokenKind.SEMICOLON])
                     result.extend(code)
+                case _:
+                    print("bizzare")
+                    sys.exit()
     def save(self):
         with open("output.wat", "w") as f:
             f.write("(module\n")
