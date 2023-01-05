@@ -1,7 +1,10 @@
 extern puti(x:int) end
 extern puts(x:int, y:int) end
 
-pub proc add(x: int, y: int) int do
-    x y +
-end
+X: int : 10;
 
+pub proc main() do
+    y:int
+    y = 5;
+    puti(y)
+end

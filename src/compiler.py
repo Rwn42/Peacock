@@ -19,6 +19,7 @@ class Compiler:
         self.imported_functions = []
         self.public_functions = []
         self.strings = []
+        self.constants:list[Variable] = []
         self.data_written = 8
         self.linear_memory = []
         self.loops_added = 0
@@ -195,6 +196,15 @@ class Compiler:
                                     result.append("drop")
                                 else:
                                     result.append(f"local.set ${token.value}")
+                            elif self.lexer.peek_next_token().kind == TokenKind.COLON:
+                                _ = self.lexer.next()
+                                value = self.compile_until([TokenKind.END, TokenKind.SEMICOLON], [TokenKind.LITERAL_INT])
+                                self.constants.append(var)
+                                result.append(f"(global ${token.value} {self.type_from_token_type(var_type)} ({value[0]}))")
+                                _ = self.lexer.next()
+                                continue
+                            else:
+                                pass
                             #add the variable declaration to the current function
                             functions = list(self.defined_functions.keys())
                             name = functions[len(functions)-1]
@@ -216,6 +226,11 @@ class Compiler:
                             for n in self.defined_functions[name]:
                                 if n.name == token.value:
                                     result.append(f"local.get ${token.value}")
+                                    break
+                            #check for constant
+                            for c in self.constants:
+                                if c.name == token.value:
+                                    result.append(f"global.get ${token.value}")
                                     break
                 case TokenKind.DROP: result.append("drop") 
                 case TokenKind.EOF: return result

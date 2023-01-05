@@ -5,7 +5,7 @@ Stack-based, concatenative language that compiles (hopefully) to web assembly.
 ```
 extern puts(x:int, y:int) end
 
-proc main() do
+pub proc main() do
     puts("Hello, world")
 end
 ```
@@ -61,12 +61,17 @@ assignment: `name = expression end` <br>
 declaration and assignment: `name:type = expression end`
 **Instead of `end` `;` is also supported to end variable assignments**
 
+### Constants
+declaration: `name:type:value end` <br>
+
 ### Functions
 ```
 proc add(x:int, y:int) int do
     x y +
 end
 ```
+by adding the `pub` keyword a function is visible
+to the host environment.
 
 ### Extern Keyword
 Since web-assembly supports calling functions from other environments such as JavaScript or the runtime like wasmtime the extern keyword gives the compiler nessecary information about functions you may call from the host environment.
