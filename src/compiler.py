@@ -11,7 +11,7 @@ class Compiler:
         TokenKind.ASTERISK, TokenKind.SLASH_FORWARD, TokenKind.PLUS, TokenKind.DASH,
         TokenKind.IDENTIFIER,
     ]
-    def __init__(self, lexer:Lexer):
+    def __init__(self, lexer:Lexer, environment:str):
         self.lexer = lexer
         #this can just contain names
         self.defined_functions:dict[str, list[Variable]] = {}
@@ -22,7 +22,7 @@ class Compiler:
         self.linear_memory = []
         self.loops_added = 0
         self.linear_memory_head = 0
-        self.environment = "wasi_unstable"
+        self.environment = environment
     
     def compile_until(self, until: list[TokenKind], whitelist: list[TokenKind]):
         result: list[str] = []
@@ -39,13 +39,8 @@ class Compiler:
             match token.kind:
                 case TokenKind.LITERAL_STR:
                     self.strings.append(token.value)
-                   
-                    #by compiler convention strings are stored at linear memory position 0
-                    code = self.linear_store(self.data_written, 0)
-                    
-                    #without offset it will be automatically calculated
-                    code.extend(self.linear_store(len(token.value)-1, 4))
-                    result.extend(code)
+                    result.append(f"i32.const {self.data_written}")
+                    result.append(f"i32.const {len(token.value)-1}")
                     self.data_written += len(token.value)-1
                 case TokenKind.LITERAL_INT: result.append(f"i32.const {token.value}")
                 case TokenKind.PLUS: result.append("i32.add")
@@ -278,6 +273,12 @@ class Compiler:
                 f.write(f"{imported_function}\n")
             f.write("(memory 1)\n")
             f.write('(export "memory" (memory 0))\n')
+            for i, name in enumerate(self.defined_functions.keys()):
+                if name == "main":
+                    f.write(f'(export "main" (func $main))\n')
+                    break
+            else:
+                print("No main function declared... please declare one.")
             #dont know why we need the 8 but we do
             f.write("(data (i32.const 8) ")
             for string in self.strings:
@@ -285,11 +286,6 @@ class Compiler:
             f.write(")")
             for substring in program:
                 f.write(f"  {substring}\n")
-            for i, name in enumerate(self.defined_functions.keys()):
-                if name == "main":
-                    f.write(f"(start {i})\n")
-                    break
-            else:
-                print("No main function declared... please declare one.")
+
             f.write(")")
     

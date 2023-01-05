@@ -1,22 +1,31 @@
 # Peacock
-Stack-based, concatenative language that compiles (hopefully) to wasi compliant web assembly.
+Stack-based, concatenative language that compiles (hopefully) to web assembly.
 
 ## The Hello World
 ```
-extern fd_write(x:int, y:int, z:int, w:int) int end
+extern puts(x:int, y:int) end
 
 proc main() do
-    _:int = fd_write("Hello, world\n", 1, 0, 1, 20)
+    puts("Hello, world")
 end
 ```
 
 ## Quickstart
-the language currently only supports WASI compliant WASM runtimes such as wasmtime. Additionally, it compiles to .wat files so a tool like wat2wasm may be required for non wasmtime runtimes. (wasmtime can run wat files)
+the language currently only supports a custom WASM environment (the js code is included). Additionally, it compiles to .wat files so a tool like wat2wasm will be required.
+
+## A note on WASI
+originally I was targetting a wasi interface but I found the project more fun, easier and more flexible if I made my own JS envrironment. WASI support is not ruled out for the future.
 
 compile command: <br>
 `python src/main.py examples/test.pk`<br>
-running:<br>
-`wasmtime output.wat`
+`wat2wasm output.wat`<br>
+`mv output.wasm web-env/output.wasm`
+running:
+```sh
+cd web-env
+python -m http.server 8080
+```
+navigate to the provided link
 
 
 
@@ -42,7 +51,7 @@ end
 ```
 i: int = 10;
 while i < 10 do
-    i = i 1 +
+    i = i 1 +;
 end
 ```
 

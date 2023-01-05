@@ -1,8 +1,6 @@
-extern fd_write(x:int, y:int, z:int, w:int) int end
+extern puti(x:int) end
+extern puts(x:int, y:int) end
 
 proc main() do
-    i: int = 0;
-    while i <= 10 do
-        i = i 1 +
-    end
+    puts("Hello, World!")
 end

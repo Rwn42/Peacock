@@ -14,7 +14,7 @@ def main():
     #     print(token)
     #     token = lexer.next()
         
-    c = Compiler(lexer)
+    c = Compiler(lexer, "env")
     program = c.compile_until(until=[TokenKind.EOF], whitelist=None)
     c.save(program)
 
