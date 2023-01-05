@@ -2,5 +2,5 @@ extern puti(x:int) end
 extern puts(x:int, y:int) end
 
 proc main() do
-    puts("Hello, World!")
+    
 end

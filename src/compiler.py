@@ -40,8 +40,8 @@ class Compiler:
                 case TokenKind.LITERAL_STR:
                     self.strings.append(token.value)
                     result.append(f"i32.const {self.data_written}")
-                    result.append(f"i32.const {len(token.value)-1}")
-                    self.data_written += len(token.value)-1
+                    result.append(f"i32.const {len(token.value)}")
+                    self.data_written += len(token.value)
                 case TokenKind.LITERAL_INT: result.append(f"i32.const {token.value}")
                 case TokenKind.PLUS: result.append("i32.add")
                 case TokenKind.DASH: result.append("i32.sub")
