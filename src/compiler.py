@@ -49,7 +49,7 @@ class Compiler:
         #holds each string literal
         self.strings = []
         #keeps track of how much was written to the data section
-        self.data_section_written = 0
+        self.data_section_written = 8
         
         #keeps track of while loops added so we can generate custom name for each
         self.loops_added = 0
@@ -84,7 +84,7 @@ class Compiler:
                     result.append(f"i32.const {self.data_section_written}")
                     #length of the string
                     result.append(f"i32.const {len(token.value)}")
-                    self.data_written += len(token.value)
+                    self.data_section_written += len(token.value)
                 case TokenKind.LITERAL_INT: result.append(f"i32.const {token.value}")
                 case TokenKind.LITERAL_FLOAT: result.append(f"f32.const {token.value}")
                 case TokenKind.LITERAL_BOOL: result.append(f"i32.const {1 if token.value == 'true' else 0}")
@@ -347,7 +347,7 @@ class Compiler:
                 if function.public == True:
                     f.write(f'(export "{function.name}" (func ${function.name}))\n')
 
-            f.write("(data ")
+            f.write("(data (i32.const 8) ")
             for string in self.strings:
                 f.write(f'"{string}" ')
             f.write(")")

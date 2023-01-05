@@ -1,7 +1,7 @@
-extern puts(x: int) end
+extern puts(x: int, y: int) end
 
 b : float : 10
 
 pub proc main() do
-    z: int = 10;
+    puts("Hello, World")
 end
