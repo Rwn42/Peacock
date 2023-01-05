@@ -1,18 +1,5 @@
 let instance;
 
-const custom_environment = {
-    env: {
-        puti(arg){
-            console.log(arg)
-        },
-        puts(offset, length){
-            print("called")
-            const bytes = new Uint8Array(get_instance().instance.memory.buffer, offset, length);
-            const string = new TextDecoder("utf8").decode(bytes);
-            console.log(string);
-        }
-    }
-}
 
 async function load(){
     const file = await fetch("./output.wasm");
