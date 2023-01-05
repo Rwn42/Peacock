@@ -23,6 +23,9 @@ async function load(){
             puti(arg){
                 console.log(arg)
             },
+            putf(arg){
+                console.log(arg)
+            },
             puts(offset, length){
                 print("called")
                 const bytes = new Uint8Array(instance.exports.memory.buffer, offset, length);

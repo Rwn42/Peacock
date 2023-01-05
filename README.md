@@ -67,7 +67,7 @@ declaration: `name:type:value end` <br>
 ### Functions
 ```
 proc add(x:int, y:int) int do
-    x y +
+    return x y +
 end
 ```
 by adding the `pub` keyword a function is visible
