@@ -3,8 +3,12 @@ extern puts(x:int, y:int) end
 
 X: int : 10;
 
+struct Vec2
+    x: int
+    y: int
+end
+
 pub proc main() do
-    y:int
-    y = 5;
-    puti(y)
+    point: Vec2{10, 5}
+    puti(point.y)
 end

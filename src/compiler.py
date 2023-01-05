@@ -19,7 +19,10 @@ class Compiler:
         self.imported_functions = []
         self.public_functions = []
         self.strings = []
+        self.defined_types: list[str] = []
         self.constants:list[Variable] = []
+        #map of keys to offsets
+        self.defined_structs:dict[dict[str, int]] = {}
         self.data_written = 8
         self.linear_memory = []
         self.loops_added = 0
@@ -89,6 +92,20 @@ class Compiler:
                     result.append(f"br_if ${loop_num}_loop")
                     result.append(")")
                     self.loops_added += 1
+                case TokenKind.STRUCT:
+                    name = self.lexer.next().value
+                    self.defined_types.append(name)
+                    self.defined_structs[name] = {}
+                    offset = 0
+                    while True:
+                        tk = self.lexer.next()
+                        if tk.kind == TokenKind.IDENTIFIER:
+                            self.defined_structs[name][tk.value] = offset
+                            offset += 4
+                        elif tk.kind == TokenKind.END:
+                            break
+                        else:
+                            pass
                 case TokenKind.PUB:
                     row = self.lexer.row
                     col = self.lexer.col
@@ -140,7 +157,11 @@ class Compiler:
                     for var in self.defined_functions[name]:
                         if var in params2:
                             continue
-                        result.append(f"(local ${var.name} {self.type_from_token_type(var.type)}) ")
+                        if self.type_from_token_type(var.type) == None:
+                            result.append(f"(local ${var.name} i32) ")
+                        else:
+                            result.append(f"(local ${var.name} {self.type_from_token_type(var.type)}) ")
+
                     result.extend(body)
                     result.append(")")
                 case TokenKind.EXTERN:
@@ -183,7 +204,14 @@ class Compiler:
                         case TokenKind.COLON:
                             #consume the colon
                             _ = self.lexer.next()
-                            var_type = self.lexer.next().kind
+                            var_type = self.lexer.next()
+                            if self.type_from_token_type(var_type.kind) == None:
+                                var_type = var_type.value
+                                if var_type not in self.defined_types:
+                                    print(f"Error: Unknown Type {var_type}")
+                                    sys.exit(1)
+                            else:
+                                var_type = var_type.kind
                             var = Variable(token.value, var_type)
                             if self.lexer.peek_next_token().kind == TokenKind.SINGLE_EQUAL:
                                 
@@ -203,6 +231,22 @@ class Compiler:
                                 result.append(f"(global ${token.value} {self.type_from_token_type(var_type)} ({value[0]}))")
                                 _ = self.lexer.next()
                                 continue
+                            elif self.lexer.peek_next_token().kind == TokenKind.LCURLY:
+                                _ = self.lexer.next()
+                                #pointer to struct start
+                                result.append(f"i32.const {self.linear_memory_head}")
+                                result.append(f"local.set ${token.value}")
+                                while True:
+                                    field = self.compile_until([TokenKind.COMMA, TokenKind.RCURLY], Compiler.expression_tokens)
+                                    result.append(f"i32.const {self.linear_memory_head}")
+                                    result.extend(field)
+                                    self.linear_memory_head += 4
+                                    result.append("i32.store")
+                                    if self.lexer.next().kind == TokenKind.COMMA:
+                                        continue
+                                    else:
+                                        break
+                                
                             else:
                                 pass
                             #add the variable declaration to the current function
@@ -216,6 +260,34 @@ class Compiler:
                             _ = self.lexer.next()
                             result.extend(assignment_expression)
                             result.append(f"local.set ${token.value}")
+                        case TokenKind.LCURLY:
+                            _ = self.lexer.next()
+                            #pointer to struct start
+                            result.append(f"i32.const {self.linear_memory_head}")
+                            result.append(f"local.set ${token.value}")
+                            while True:
+                                field = self.compile_until([TokenKind.COMMA, TokenKind.RCURLY], Compiler.expression_tokens)
+                                result.append(f"i32.const {self.linear_memory_head}")
+                                result.extend(field)
+                                self.linear_memory_head += 4
+                                result.append("i32.store")
+                                if self.lexer.next().kind == TokenKind.COMMA:
+                                    continue
+                                else:
+                                    break
+                        case TokenKind.DOT:
+                            #find what struct this guy is
+                            _ = self.lexer.next()
+                            functions = list(self.defined_functions.keys())
+                            name = functions[len(functions)-1]
+                            for n in self.defined_functions[name]:
+                                if token.value == n.name:
+                                    next_t = self.lexer.next()
+                                    result.append(f"local.get ${token.value}")
+                                    result.append(f"i32.const {self.defined_structs[n.type][next_t.value]}")
+                                    result.append("i32.add")
+                                    result.append(f"i32.load")
+                                
                         #variable/constant usage not defintion or function call
                         case _:
                             #find what function we in
@@ -284,13 +356,12 @@ class Compiler:
             next_tk = self.lexer.next()
         return params
     
-    def type_from_token_type(self, type: TokenKind) -> str:
+    def type_from_token_type(self, type: TokenKind) -> Optional[str]:
         match type:
             case TokenKind.TYPE_INT: return "i32"
             case TokenKind.TYPE_FLOAT: return "f32"
             case _:
-                print(f"Error: unknown type {type}")
-                sys.exit()
+                return None
 
     #saves the program to a .wat file
     def save(self, program: list[str]):

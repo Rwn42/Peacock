@@ -77,5 +77,20 @@ to the host environment.
 Since web-assembly supports calling functions from other environments such as JavaScript or the runtime like wasmtime the extern keyword gives the compiler nessecary information about functions you may call from the host environment.
 `extern some_function(x:int, y:int) int end`
 
+### Structures
+```
+struct Vec2
+x: int
+y: int
+end
+
+//returns 5
+proc access() do
+    point:Vec2
+    point{1, 5}
+    point.y
+end
+```
+Currently struct implementation is very rudimentry the type of the field does not matter to the compiler. Structs will only work on 4 byte sized fields like i32 or f32.
 
 
