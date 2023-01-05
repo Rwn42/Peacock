@@ -34,6 +34,7 @@ class TokenKind(Enum):
     PROC = auto()
     DROP = auto()
     EXTERN = auto()
+    PUB = auto()
     TYPE_INT = auto()
     TYPE_STR = auto()
     TYPE_FLOAT = auto()
@@ -192,6 +193,7 @@ class Lexer:
                     case "drop": token.kind = TokenKind.DROP
                     case "extern": token.kind = TokenKind.EXTERN
                     case "float": token.kind = TokenKind.TYPE_FLOAT
+                    case "pub": token.kind = TokenKind.PUB
                     case _:
                         token.kind = TokenKind.IDENTIFIER
         
@@ -199,6 +201,10 @@ class Lexer:
         if at_eof:
             self.at_eof = True
         return token
+    def back(self, pos, row, col):
+        self.pos = pos
+        self.row = row
+        self.col = col
 
     #returns the next token but does not advance the lexer
     #so a call to peek_next over and over again produces the same result

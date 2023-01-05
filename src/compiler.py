@@ -17,6 +17,7 @@ class Compiler:
         self.defined_functions:dict[str, list[Variable]] = {}
         #these must be full function signatures
         self.imported_functions = []
+        self.public_functions = []
         self.strings = []
         self.data_written = 8
         self.linear_memory = []
@@ -87,6 +88,17 @@ class Compiler:
                     result.append(f"br_if ${loop_num}_loop")
                     result.append(")")
                     self.loops_added += 1
+                case TokenKind.PUB:
+                    row = self.lexer.row
+                    col = self.lexer.col
+                    pos = self.lexer.pos
+                    #print(self.lexer.peek_next_token())
+                    if self.lexer.next().kind != TokenKind.PROC:
+                        print("ERROR: Expected Proc keyword after public declaration")
+                        sys.exit()
+                    name = self.lexer.peek_next_token().value
+                    self.public_functions.append(name)
+                    self.lexer.back(pos, row, col)
                 case TokenKind.PROC:
                     if self.lexer.peek_next_token().kind != TokenKind.IDENTIFIER:
                         print("Error Expected Identifier after procedure defintion")
@@ -273,12 +285,14 @@ class Compiler:
                 f.write(f"{imported_function}\n")
             f.write("(memory 1)\n")
             f.write('(export "memory" (memory 0))\n')
-            for i, name in enumerate(self.defined_functions.keys()):
-                if name == "main":
-                    f.write(f'(export "main" (func $main))\n')
-                    break
-            else:
-                print("No main function declared... please declare one.")
+            # for i, name in enumerate(self.defined_functions.keys()):
+            #     if name == "main":
+            #         f.write(f'(export "main" (func $main))\n')
+            #         break
+            # else:
+            #     print("No main function declared... please declare one.")
+            for name in self.public_functions:
+                f.write(f'(export "{name}" (func ${name}))\n')
             #dont know why we need the 8 but we do
             f.write("(data (i32.const 8) ")
             for string in self.strings:

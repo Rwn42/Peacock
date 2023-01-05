@@ -1,6 +1,7 @@
 extern puti(x:int) end
 extern puts(x:int, y:int) end
 
-proc main() do
-    
+pub proc add(x: int, y: int) int do
+    x y +
 end
+
