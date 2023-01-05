@@ -13,6 +13,8 @@ class TokenKind(Enum):
     SLASH_FORWARD = auto()
     LITERAL_INT = auto()
     LITERAL_STR = auto()
+    LITERAL_FLOAT = auto()
+    LITERAL_BOOL = auto()
     LPAREN = auto()
     RPAREN = auto()
     COMMA = auto()
@@ -131,8 +133,8 @@ class Lexer:
             case ")": token.kind = TokenKind.RPAREN
             case "{": token.kind = TokenKind.LCURLY
             case "}": token.kind = TokenKind.RCURLY
-            case ".": token.kind = TokenKind.DOT
             case ";": token.kind = TokenKind.SEMICOLON
+            case ".": token.kind = TokenKind.SKINNY_ARROW
             case ",": token.kind = TokenKind.COMMA
             case "/": 
                 match self.peek():
@@ -180,13 +182,18 @@ class Lexer:
                 token.value = val
                 self.advance()
             case _:
-                val, _ = self.get_characters_until(lambda x: x.isalnum() or x == "_")
+                val, _ = self.get_characters_until(lambda x: x.isalnum() or x == "_" or x == ".")
                 token.value = val
         #token may be keyword or number literal at this point
         if token.kind == TokenKind.IDENTIFIER:
+            
             try:
-                _ = int(token.value)
-                token.kind = TokenKind.LITERAL_INT
+                try:
+                    _ = int(token.value)
+                    token.kind = TokenKind.LITERAL_INT
+                except:
+                    _ = float(token.value)
+                    token.kind = TokenKind.LITERAL_FLOAT
             except:
                 match token.value:
                     case "if": token.kind = TokenKind.IF
@@ -202,6 +209,7 @@ class Lexer:
                     case "float": token.kind = TokenKind.TYPE_FLOAT
                     case "pub": token.kind = TokenKind.PUB
                     case "struct": token.kind = TokenKind.STRUCT
+                    case "true" | "false": token.kind = TokenKind.LITERAL_BOOL
                     case _:
                         token.kind = TokenKind.IDENTIFIER
         

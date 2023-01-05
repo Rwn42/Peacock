@@ -9,14 +9,14 @@ def main():
     lexer = Lexer(f.read())
     f.close()
 
-    # token = lexer.next()
-    # while token.kind != TokenKind.EOF:
-    #     print(token)
-    #     token = lexer.next()
+    token = lexer.next()
+    while token.kind != TokenKind.EOF:
+        print(token)
+        token = lexer.next()
         
-    c = Compiler(lexer, "env")
-    program = c.compile_until(until=[TokenKind.EOF], whitelist=None)
-    c.save(program)
+    # c = Compiler(lexer, "env")
+    # program = c.compile_until(until=[TokenKind.EOF], whitelist=None)
+    # c.save(program)
 
 
 

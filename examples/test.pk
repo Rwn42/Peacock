@@ -1,14 +1,5 @@
-extern puti(x:int) end
-extern puts(x:int, y:int) end
-
-X: int : 10;
-
-struct Vec2
-    x: int
-    y: int
-end
-
-pub proc main() do
-    point: Vec2{10, 5}
-    puti(point.y)
-end
+10.233
+true 
+false
+"hello"
+123
