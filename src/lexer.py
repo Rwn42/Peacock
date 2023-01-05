@@ -44,6 +44,7 @@ class TokenKind(Enum):
     TYPE_INT = auto()
     TYPE_STR = auto()
     TYPE_FLOAT = auto()
+    TYPE_BOOL = auto()
     EOF = auto()
     IDENTIFIER = auto()
 
@@ -210,6 +211,7 @@ class Lexer:
                     case "pub": token.kind = TokenKind.PUB
                     case "struct": token.kind = TokenKind.STRUCT
                     case "true" | "false": token.kind = TokenKind.LITERAL_BOOL
+                    case "bool": token.kind = TokenKind.TYPE_BOOL
                     case _:
                         token.kind = TokenKind.IDENTIFIER
         

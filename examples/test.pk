@@ -1,5 +1,7 @@
-10.233
-true 
-false
-"hello"
-123
+extern puts(x: int) end
+
+b : float : 10
+
+pub proc main() do
+    z: int = 10;
+end

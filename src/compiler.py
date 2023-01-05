@@ -4,8 +4,380 @@ from enum import Enum, auto
 import sys
 
 Variable = namedtuple("Variable", "name type")
+Constant = namedtuple("Variable", "name type val")
+IdentifierInformation = namedtuple("IdentifierInformation", "type is_var is_const is_func")
+
+class VariableType(Enum):
+    INT = auto()
+    STR = auto()
+    BOOL = auto()
+    FLOAT = auto()
+    CUSTOM = auto()
+    CUSTOM_PTR = auto()
+
+class Function:
+    def __init__(self, name: str, params: list[Variable], return_type: VariableType, public:bool, extern:bool):
+        self.params = params
+        self.return_type = return_type
+        self.locals: list[Variable] = []
+        self.public = public
+        self.body: list[str] = []
+        self.name = name
+        self.extern = extern
+
+    def add_body(self, code:list[str]):
+        self.body = code
+    def add_local(self, local:Variable):
+        self.locals.append(local)
+
+    def generate_code(self):
+        pass
 
 class Compiler:
+    expression_tokens = [
+        TokenKind.LPAREN, TokenKind.RPAREN, TokenKind.LITERAL_INT, TokenKind.LITERAL_STR,
+        TokenKind.ASTERISK, TokenKind.SLASH_FORWARD, TokenKind.PLUS, TokenKind.DASH,
+        TokenKind.IDENTIFIER, TokenKind.DOT, TokenKind.LITERAL_FLOAT, TokenKind.LITERAL_BOOL
+    ]
+    def __init__(self, lexer:Lexer, environment: str):
+        self.lexer = lexer
+        self.environment = environment
+
+        #holds the name and type of each variable declared in a function
+        self.functions:list[Function] = []
+
+        #holds each string literal
+        self.strings = []
+        #keeps track of how much was written to the data section
+        self.data_section_written = 0
+        
+        #keeps track of while loops added so we can generate custom name for each
+        self.loops_added = 0
+        
+        #external function signatures
+        self.extern_functions:list[str] = []
+        
+        #next function is public
+        self.next_proc_public = False
+
+        #keeps track of constants declared
+        self.constants: list[Constant] = []
+
+
+    def compile_until(self, until:list[TokenKind], whitelist:list[TokenKind]):
+        result: list[str] = []
+        while True:
+            token = self.lexer.peek_next_token()
+            if token.kind in until:
+                return result
+            if whitelist:
+                if token.kind not in whitelist:
+                    print(f"Unexpected Token {token}")
+                    sys.exit()
+            
+            token = self.lexer.next()
+            match token.kind:
+                #literals
+                case TokenKind.LITERAL_STR:
+                    self.strings.append(token.value)
+                    #a pointer to the start of the string
+                    result.append(f"i32.const {self.data_section_written}")
+                    #length of the string
+                    result.append(f"i32.const {len(token.value)}")
+                    self.data_written += len(token.value)
+                case TokenKind.LITERAL_INT: result.append(f"i32.const {token.value}")
+                case TokenKind.LITERAL_FLOAT: result.append(f"f32.const {token.value}")
+                case TokenKind.LITERAL_BOOL: result.append(f"i32.const {1 if token.value == 'true' else 0}")
+
+                #arithmetic
+                case TokenKind.PLUS:
+                    expr_type = self.determine_expression_type([result[len(result)-1]])
+                    assert expr_type != None, "Compiler Dev Error cannot determine type of expression"
+                    result.append(f"{self.var_type_to_str(expr_type)}.add")
+                case TokenKind.DASH:
+                    expr_type = self.determine_expression_type([result[len(result)-1]])
+                    assert expr_type != None, "Compiler Dev Error cannot determine type of expression"
+                    result.append(f"{self.var_type_to_str(expr_type)}.sub")
+                case TokenKind.ASTERISK:
+                    expr_type = self.determine_expression_type([result[len(result)-1]])
+                    assert expr_type != None, "Compiler Dev Error cannot determine type of expression"
+                    result.append(f"{self.var_type_to_str(expr_type)}.mul")
+                case TokenKind.SLASH_FORWARD:
+                    expr_type = self.determine_expression_type([result[len(result)-1]])
+                    assert expr_type != None, "Compiler Dev Error cannot determine type of expression"
+                    result.append(f"{self.var_type_to_str(expr_type)}.div")
+
+                #comparison
+                case TokenKind.DOUBLE_EQUAL: 
+                    result.extend(self.compile_until([TokenKind.DO], Compiler.expression_tokens))
+                    expr_type = self.determine_expression_type([result[len(result)-1]])
+                    result.append(f"{self.var_type_to_str(expr_type)}.eq")
+                case TokenKind.NOT_EQUAL: 
+                    result.extend(self.compile_until([TokenKind.DO], Compiler.expression_tokens))
+                    expr_type = self.determine_expression_type([result[len(result)-1]])
+                    result.append(f"{self.var_type_to_str(expr_type)}.ne")
+                case TokenKind.LESS_THAN: 
+                    result.extend(self.compile_until([TokenKind.DO], Compiler.expression_tokens))
+                    expr_type = self.determine_expression_type([result[len(result)-1]])
+                    result.append(f"{self.var_type_to_str(expr_type)}.lt_u")
+                case TokenKind.GREATER_THAN: 
+                    result.extend(self.compile_until([TokenKind.DO], Compiler.expression_tokens))
+                    expr_type = self.determine_expression_type([result[len(result)-1]])
+                    result.append(f"{self.var_type_to_str(expr_type)}.gt_u")
+                case TokenKind.LESS_THAN_EQUAL: 
+                    result.extend(self.compile_until([TokenKind.DO], Compiler.expression_tokens))
+                    expr_type = self.determine_expression_type([result[len(result)-1]])
+                    result.append(f"{self.var_type_to_str(expr_type)}.le_u")
+                case TokenKind.GREATER_THAN_EQUAL: 
+                    result.extend(self.compile_until([TokenKind.DO], Compiler.expression_tokens))
+                    expr_type = self.determine_expression_type([result[len(result)-1]])
+                    result.append(f"{self.var_type_to_str(expr_type)}.ge_u")
+                
+                #control flow
+                case TokenKind.DO:
+                    result.append("(if\n(then")
+                    result.extend(self.compile_until([TokenKind.END, TokenKind.ELSE], whitelist=None))
+                    result.append(")")
+                    if self.lexer.next().kind == TokenKind.ELSE:
+                        result.append("(else")
+                        result.extend(self.compile_until([TokenKind.END], whitelist=None))
+                        _ = self.lexer.next()
+                        result.append(")")
+                    result.append(")")
+                case TokenKind.WHILE:
+                    condition = self.compile_until([TokenKind.DO], None)
+                    _ = self.lexer.next()
+                    body = self.compile_until([TokenKind.END], None)
+                    _ = self.lexer.next()
+                    loop_num = self.loops_added
+                    result.append(f"(loop ${loop_num}_loop")
+                    result.extend(body)
+                    result.extend(condition)
+                    result.append(f"br_if ${loop_num}_loop")
+                    result.append(")")
+                    self.loops_added += 1
+                
+                #function defintions
+                case TokenKind.EXTERN:
+                    name = self.lexer.next().value
+                    signature = []
+                    self.functions.append(Function(name, [], None, False, True))
+                    params = self.function_parameters()
+                    signature.append(f'(import "{self.environment}" "{name}" (func ${name} ')
+                    signature.extend([f"(param {self.var_type_to_str(p.type)}) " for p in params])
+                    next_tk = self.lexer.next()
+                    if next_tk.kind != TokenKind.END:
+                        signature.append(f"(result {self.var_type_to_str(self.token_to_type(next_tk))})")
+                        _ = self.lexer.next()
+                    signature.append("))")
+                    self.extern_functions.append("".join(signature))
+                case TokenKind.PUB:
+                    self.next_proc_public = True
+                case TokenKind.PROC:
+                    if self.lexer.peek_next_token().kind != TokenKind.IDENTIFIER:
+                        print("Error Expected Identifier after procedure defintion")
+                        print(f"Unexpected Token {self.lexer.peek_next_token()}")
+                        sys.exit()
+
+                    name = self.lexer.next().value
+                    params = self.function_parameters()
+                    return_type = None
+                    next_tk = self.lexer.next()
+                    if next_tk.kind != TokenKind.DO:
+                        return_type = self.token_to_type(next_tk)
+                        _ = self.lexer.next()
+                    self.functions.append(Function(name, params, return_type,self.next_proc_public, False ))
+                    if self.next_proc_public:
+                        self.next_proc_public = False
+                    body = self.compile_until([TokenKind.END], whitelist=None)
+                    self.functions[len(self.functions)-1].add_body(body)
+                    _ = self.lexer.next()
+
+                #identifiers (...here we go)
+                case TokenKind.IDENTIFIER:
+                    match self.lexer.peek_next_token().kind:
+                        case TokenKind.LPAREN:
+                            _ = self.lexer.next()
+                            for fn in self.functions:
+                                if token.value == fn.name:
+                                    break
+                            else:
+                                print(f"Undeclared Procedure {token.value}")
+                                sys.exit()
+                            params = self.compile_until([TokenKind.RPAREN], Compiler.expression_tokens.extend([TokenKind.COMMA]))
+                            self.lexer.next()
+                            result.extend(params)
+                            result.append(f"call ${token.value}")
+                        case TokenKind.COLON:
+                            _ = self.lexer.next()
+                            type_ = self.token_to_type(self.lexer.next())
+                            if self.lexer.peek_next_token().kind == TokenKind.SINGLE_EQUAL:
+                                _ = self.lexer.next()
+                                self.functions[len(self.functions)-1].add_local(Variable(token.value, type_))
+                                expr = self.compile_until([TokenKind.END, TokenKind.SEMICOLON], Compiler.expression_tokens)
+                                result.extend(expr)
+                                result.append(f"local.set ${token.value}")
+                            elif self.lexer.peek_next_token().kind == TokenKind.COLON:
+                                _ = self.lexer.next()
+                                self.constants.append(Constant(token.value, type_, self.lexer.next().value))
+                            else:
+                                self.functions[len(self.functions)-1].add_local(Variable(token.value, type_))
+                        case TokenKind.SINGLE_EQUAL:
+                            _ = self.lexer.next()
+                            expr = self.compile_until([TokenKind.END, TokenKind.SEMICOLON], Compiler.expression_tokens)
+                            result.extend(expr)
+                            result.append(f"local.set ${token.value}")
+                        case TokenKind.DOT:
+                            _ = self.lexer.next()
+                        case _:
+                            info = self.look_up_identifier(token)
+                            if info.is_var:
+                                result.append(f"local.get ${token.value}")
+                            elif info.is_const:
+                                result.append(f"global.get ${token.value}")
+                            else:
+                                print(f"Unexpected Token {token}")
+                                sys.exit()
+
+
+
+
+    def look_up_identifier(self, id:str) -> IdentifierInformation:
+        #if id not defined in the current function it wont be a variable in this context'
+        #current function is the last added key in the dictionary
+        if len(self.functions) < 1:
+            pass
+        else:
+            for var in self.functions[len(self.functions)-1].locals:
+                if var.name == id:
+                    return IdentifierInformation(var.type, True, False, False)
+            for var in self.functions[len(self.functions)-1].params:
+                if var.name == id:
+                    return IdentifierInformation(var.type, True, False, False)   
+
+        #check if procedure
+        for fn in self.functions:
+            if id == fn.name:
+                return IdentifierInformation(None, False, False, True) 
+
+        #check for constant
+        for const in self.constants:
+            if id == const.name:
+                return IdentifierInformation(const.type, False, True, False)
+        
+
+    def determine_expression_type(self, code: list[str]) -> Optional[VariableType]:
+        #we wanna look at the last thing first
+        code.reverse()
+        for inst in code:
+            if "i32" in inst:
+                return VariableType.INT
+            elif "f32" in inst:
+                return VariableType.FLOAT
+            elif "local.get" in inst:
+                name = inst.split("$")[1]
+                info = self.look_up_identifier(name)
+                return info.type
+            elif "global.get" in inst:
+                name = inst.split("$")[1]
+                info = self.look_up_identifier(name)
+                return info.type
+            elif "call" in inst:
+                name = inst.split("$")[1]
+                for func in self.functions:
+                    if name == func.name:
+                        return func.return_type
+            else:
+                continue
+        return None
+
+    def var_type_to_str(self, v: VariableType) -> str:
+        match v:
+            case VariableType.INT: return "i32"
+            case VariableType.CUSTOM_PTR: return "i32"
+            case VariableType.BOOL: return "i32"
+            case VariableType.FLOAT: return "f32"
+            case _:
+                print("COmpiler Dev error specified type has no wasm version")
+
+    def function_parameters(self) -> list[Variable]:
+        if self.lexer.peek_next_token().kind != TokenKind.LPAREN:
+            print(f"Unexpected Token {self.lexer.next()} expected (")
+            sys.exit()
+                    
+        _ = self.lexer.next()
+
+        next_tk = self.lexer.next()
+        params = []
+        while True:
+            match next_tk.kind:
+                case TokenKind.IDENTIFIER:
+                    if self.lexer.next().kind != TokenKind.COLON:
+                        print(f"Unexpected Token In Procedure Defenition {next_tk} expected :<type>")
+                        sys.exit()
+                    param_type = self.lexer.next()
+                    params.append(Variable(next_tk.value, self.token_to_type(param_type)))
+                case TokenKind.COMMA: pass
+                case TokenKind.RPAREN: break
+                case _:
+                    print(f"Unexpected Token In Procedure Defenition {next_tk}")
+                    sys.exit()
+            next_tk = self.lexer.next()
+        return params
+
+    def token_to_type(self, t: Token, custom_is_ptr:bool=True) -> VariableType:
+        match t.kind:
+            case TokenKind.TYPE_INT: return VariableType.INT
+            case TokenKind.TYPE_BOOL: return VariableType.BOOL
+            case TokenKind.TYPE_STR: return VariableType.STR
+            case TokenKind.TYPE_FLOAT: return VariableType.FLOAT
+            case TokenKind.IDENTIFIER if not custom_is_ptr: return VariableType.CUSTOM
+            case TokenKind.IDENTIFIER if custom_is_ptr: return VariableType.CUSTOM_PTR
+            case _:
+                print(f"Unexpected Token {t}")
+                sys.exit(1)
+    def save(self, program: list[str]):
+        with open("output.wat", "w") as f:
+            f.write("(module\n")
+            for imported_function in self.extern_functions:
+                f.write(f"{imported_function}\n")
+            f.write("(memory 1)\n")
+            f.write('(export "memory" (memory 0))\n')
+            for function in self.functions:
+                if function.public == True:
+                    f.write(f'(export "{function.name}" (func ${function.name}))\n')
+
+            f.write("(data ")
+            for string in self.strings:
+                f.write(f'"{string}" ')
+            f.write(")")
+            for const in self.constants:
+                f.write(f"(global ${const.name} {self.var_type_to_str(const.type)} ({self.var_type_to_str(const.type)}.const {const.val}))\n")
+            for fn in self.functions:
+                if fn.extern:
+                    continue
+                f.write(f"(func ${fn.name}\n")
+                for p in fn.params:
+                    f.write(f"(param ${p.name} {self.var_type_to_str(p.type)})\n")
+                if fn.return_type:
+                    f.write(f"(result {self.var_type_to_str(fn.return_type)})\n")
+                for l in fn.locals:
+                    f.write(f"(local ${l.name} {self.var_type_to_str(l.type)})\n")
+                for inst in fn.body:
+                    f.write(f"{inst}\n")
+                f.write(")\n")
+            # for substring in program:
+            #     f.write(f"  {substring}\n")
+            f.write(")\n")
+
+
+
+
+
+
+
+
+class Compiler2:
     expression_tokens = [
         TokenKind.LPAREN, TokenKind.RPAREN, TokenKind.LITERAL_INT, TokenKind.LITERAL_STR,
         TokenKind.ASTERISK, TokenKind.SLASH_FORWARD, TokenKind.PLUS, TokenKind.DASH,
@@ -377,7 +749,7 @@ class Compiler:
             #         break
             # else:
             #     print("No main function declared... please declare one.")
-            for name in self.public_functions:
+            for name in self.extern_functions:
                 f.write(f'(export "{name}" (func ${name}))\n')
             #dont know why we need the 8 but we do
             f.write("(data (i32.const 8) ")
