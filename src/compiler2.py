@@ -105,6 +105,12 @@ class Compiler:
 
         #map of constant name to tuple of type value
         self.constants: dict[str, tuple[str, str]] = {}
+
+        #map of struct name to struct fields which have name type and offset
+        self.structs: dict[str, dict[str, tuple[str, int]]] = {}
+
+        #keeps track of linear memory used
+        self.lm_head = 0
     
     #returns code to push the identifer and the type for convience
     def use_declared_identifier(self, identifier_tk: Token) -> tuple[list[str], str]:
@@ -115,6 +121,12 @@ class Compiler:
         if identifier in current_function.locals:
             type_ = current_function.locals[identifier]
             code.append(f"local.get ${identifier}\n")
+            if self.lexer.peek_next_token().kind == TokenKind.AT:
+                _ = self.lexer.next()
+                field = self.lexer.next().value
+                code.append(f"i32.const {self.structs[type_][field][1]}")
+                code.append("i32.add")
+                code.append(f"{self.types[self.structs[type_][field][0]]}.load")
         elif identifier in current_function.params:
             type_ = current_function.params[identifier]
             code.append(f"local.get ${identifier}\n")
@@ -170,6 +182,21 @@ class Compiler:
                     sys.exit()
             next_tk = self.lexer.next()
         return params
+
+    def compile_struct_initialization(self) -> list[str]:
+        result = []
+        while True:
+            code, type_ = self.compile_expression([TokenKind.COMMA, TokenKind.RCURLY])
+            result.append(f"i32.const {self.lm_head}")
+            result.extend(code)
+            result.append(f"{self.types[type_]}.store")
+            self.lm_head += 4
+            if self.lexer.next().kind == TokenKind.COMMA:
+                 continue
+            else:
+                break
+
+        return result
 
     #returns the code and the type
     def compile_expression(self, until:list[TokenKind], initial: Token = None) -> tuple[list[str], str]:
@@ -274,7 +301,6 @@ class Compiler:
                     self.functions[len(self.functions)-1].add_body(body)
                     self.functions[len(self.functions)-1].update_types(self.types)
                 case TokenKind.IDENTIFIER:
-                    #struct or const
                     if self.lexer.peek_next_token().kind == TokenKind.COLON:
                         _ = self.lexer.next()
                         type_ = self.lexer.next().value
@@ -283,6 +309,18 @@ class Compiler:
                         _ = self.lexer.next()
                         value = comptime_eval(expression)
                         self.add_constant(Constant(token.value, type_, value))
+                case TokenKind.STRUCT:
+                    name = self.lexer.next().value
+                    self.structs[name] = {}
+                    offset = 0
+                    while self.lexer.peek_next_token().kind != TokenKind.END:
+                        field = self.lexer.next().value
+                        assert self.lexer.next().kind == TokenKind.COLON, "Expected Colon after field name."
+                        type_ = self.lexer.next().value
+                        self.structs[name][field] = (type_, offset)
+                        offset += 4
+                    self.types[name] = "i32"
+                    
 
 
                 
@@ -359,16 +397,41 @@ class Compiler:
                             self.functions[function_index].add_local(Variable(token.value, type_))
                             if self.lexer.peek_next_token().kind == TokenKind.SINGLE_EQUAL:
                                 _ = self.lexer.next()
+                                if self.lexer.peek_next_token().kind == TokenKind.LCURLY:
+                                    _ = self.lexer.next()
+                                    result.append(f"i32.const {self.lm_head}")
+                                    result.append(f"local.set ${token.value}")
+                                    result.extend(self.compile_struct_initialization())
+                                else:
+                                    expression, _ = self.compile_expression([TokenKind.END, TokenKind.SEMICOLON])
+                                    _ = self.lexer.next()
+                                    result.extend(expression)
+                                    result.append(f"local.set ${token.value}")
+                        case TokenKind.SINGLE_EQUAL:
+                            _ = self.lexer.next()
+                            if self.lexer.peek_next_token().kind == TokenKind.LCURLY:
+                                _ = self.lexer.next()
+                                result.append(f"i32.const {self.lm_head}")
+                                result.append(f"local.set ${token.value}")
+                                result.extend(self.compile_struct_initialization())
+                            else:
                                 expression, _ = self.compile_expression([TokenKind.END, TokenKind.SEMICOLON])
                                 _ = self.lexer.next()
                                 result.extend(expression)
                                 result.append(f"local.set ${token.value}")
-                        case TokenKind.SINGLE_EQUAL:
+                        case TokenKind.AT:
                             _ = self.lexer.next()
-                            expression, _ = self.compile_expression([TokenKind.END, TokenKind.SEMICOLON])
+                            field = self.lexer.next().value
+                            assert self.lexer.next().kind == TokenKind.SINGLE_EQUAL, f"Expected = after {token}"
+                            expr,_ = self.compile_expression([TokenKind.END, TokenKind.SEMICOLON])
                             _ = self.lexer.next()
-                            result.extend(expression)
-                            result.append(f"local.set ${token.value}")
+                            struct_instance, type_ = self.use_declared_identifier(token)
+                            result.extend(struct_instance)
+                            result.append(f"i32.const {self.structs[type_][field][1]}")
+                            result.append("i32.add")
+                            result.extend(expr)
+                            result.append(f"{self.types[self.structs[type_][field][0]]}.store")
+
                         case TokenKind.LPAREN | _:
                             code, type_ = self.use_declared_identifier(token)
                             result.extend(code)

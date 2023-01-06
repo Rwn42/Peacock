@@ -2,22 +2,17 @@ extern puts(x:int, y:int) end
 extern puti(num:int) end
 extern putf(num:float) end
 
-MyConst: int : 10 2 +;
-
-proc add(x: int, y: int) int do
-    return x y +
-end
-
-proc add_1_f(x:float) float do
-    return x 1.0 +
+struct Vec2
+    x: int
+    y: int
 end
 
 pub proc main() do
-    i: int = 0;
-    while i < 10 do
-        puti(i)
-        i = add(i, 1);
-    end
-    z: float = 10.2;
-    putf(add_1_f(z))
+    p: Vec2 = {5, 6}
+    puti(p@x)
+    puti(p@y)
+    p@x = 10;
+    p@y = 11;
+    puti(p@x)
+    puti(p@y)
 end

@@ -86,11 +86,8 @@ end
 
 //returns 5
 proc access() do
-    point:Vec2
-    point{1, 5}
-    point.y
+    point:Vec2 = {0, 5}
+    return point@y
 end
 ```
-Currently struct implementation is very rudimentry the type of the field does not matter to the compiler. Structs will only work on 4 byte sized fields like i32 or f32.
-
 

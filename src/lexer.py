@@ -30,6 +30,7 @@ class TokenKind(Enum):
     EXCLAMATION_MARK = auto()
     IF = auto()
     ELSE = auto()
+    AT = auto()
     WHILE = auto()
     RETURN = auto()
     END = auto()
@@ -136,7 +137,7 @@ class Lexer:
             case "{": token.kind = TokenKind.LCURLY
             case "}": token.kind = TokenKind.RCURLY
             case ";": token.kind = TokenKind.SEMICOLON
-            case ".": token.kind = TokenKind.SKINNY_ARROW
+            case "@": token.kind = TokenKind.AT
             case ",": token.kind = TokenKind.COMMA
             case "/": 
                 match self.peek():
