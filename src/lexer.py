@@ -1,248 +1,203 @@
-from enum import Enum, auto
+from enum import Enum, auto 
 from typing import Optional
-import sys
 
-
-#Each different kind of token many describe the token completely
-#however the identifier and the literal_x tokens use the value feild
-#of the token class
 class TokenKind(Enum):
-    PLUS = auto()
-    DASH = auto()
+    PLUS = auto(),
+    DASH = auto(),
     ASTERISK = auto()
-    SLASH_FORWARD = auto()
-    LITERAL_INT = auto()
-    LITERAL_STR = auto()
-    LITERAL_FLOAT = auto()
-    LITERAL_BOOL = auto()
-    LPAREN = auto()
-    RPAREN = auto()
-    COMMA = auto()
-    SINGLE_EQUAL = auto()
-    COLON = auto()
-    SEMICOLON = auto()
+    SLASH_FORWARD = auto(),
+    NEWLINE = auto(),
+    EOF = auto()
+    LITERAL_INT = auto(),
+    LITERAL_FLOAT = auto(),
+    LITERAL_STRING = auto(),
+    LITERAL_BOOL = auto(),
     DOUBLE_EQUAL = auto()
     NOT_EQUAL = auto()
     GREATER_THAN = auto()
     LESS_THAN = auto()
     LESS_THAN_EQUAL = auto()
     GREATER_THAN_EQUAL = auto()
+    DOT = auto(),
+    SEMICOLON = auto()
+    COLON = auto()
     EXCLAMATION_MARK = auto()
-    IF = auto()
-    ELSE = auto()
-    AT = auto()
-    WHILE = auto()
-    RETURN = auto()
-    END = auto()
+    LPAREN = auto(),
+    RPAREN = auto(),
+    SINGLE_EQUAL = auto(),
+    PROC = auto(),
     DO = auto()
-    PROC = auto()
-    DROP = auto()
-    STRUCT = auto()
-    RCURLY = auto()
-    LCURLY = auto()
-    RBRACKET = auto()
-    LBRACKET = auto()
-    DOT = auto()
-    EXTERN = auto()
-    MEMORY = auto()
-    PUB = auto()
-    TYPE_INT = auto()
-    TYPE_STR = auto()
-    TYPE_FLOAT = auto()
-    TYPE_BOOL = auto()
-    EOF = auto()
+    WHILE = auto()
+    IF = auto()
+    END = auto()
     IDENTIFIER = auto()
 
 
-
 class Token:
-    def __init__(self,row: int, col: int, kind = TokenKind.IDENTIFIER, value=""):
+    def __init__(self, kind:TokenKind, value:str, row:int, col:int, filename:str):
         self.kind = kind
         self.value = value
         self.row = row
         self.col = col
+        self.file = filename
+    
     def __repr__(self):
-        rep = f"Row: {self.row+1}, Column: {self.col+1}, Kind: {self.kind}, Value: {self.value}"
-        return rep
+         rep = f"{self.value}, of kind {self.kind.name}, at row: {self.row+1} col: {self.col+1}"
+         return rep
 
 
 class Lexer:
-    def __init__(self, source_code:str):
-        self.source_code = source_code
+    def __init__(self, code: str, filename:str):
+        self.code = code
+        self.pos = 0
         self.row = 0
         self.col = 0
-        self.pos = 0
-        self.at_eof = False
+        self.filename = filename
     
-    #moves the lexer position by 1 returns false if position is out of bounds
-    def advance(self) -> bool:
-        if self.pos == len(self.source_code) -1:
-            return False
-        if self.char() == "\n":
-            self.row += 1
-            self.col = 0
-        else:
-            self.col += 1
+    
+    def __char(self) -> str:
+        self.__consume()
+        return self.code[self.pos-1]
+    
+    def __consume(self):
         self.pos += 1
-        return True
+        self.col += 1
     
-    #gets the character at the current lexer position
-    def char(self) -> str:
-        return self.source_code[self.pos]
+    def __peek_char(self) -> Optional[str]:
+        if self.pos > len(self.code)-1: return None
+        return self.code[self.pos]
     
-    #peeks at the next characrer but does not advance the lexer
-    #may return None if the next character does not exist
-    def peek(self) -> Optional[str]:
-        if self.pos+1 > len(self.source_code) -1:
-            return None
-        return self.source_code[self.pos+1]
+    def __peek_next_char(self) -> Optional[str]:
+        if self.pos+1 > len(self.code)-1: return None
+        return self.code[self.pos+1]
     
-    #adanvances the lexer position up until the first non-whitespace character
-    def skip_whitespace(self) -> bool:
-        while self.char().isspace():
-            ok = self.advance()
-            if not ok:
-                return False
-        return True
+    #returns true if reached end of file
+    def __skip_whitespace(self) -> bool:
+        while True:
+            if self.__peek_char():
+                if self.__peek_char().isspace():
+                   self.__consume()
+                else:
+                    return False
+            else:
+                return True
     
-    #iterates over the source code characters until the filter_function returns false
-    #the function returns these characters as a string and if it reached eof 
-    #it starts at the current lexer position
-    def get_characters_until(self, filter_function) -> tuple[str, bool]:
+    def __get_characters_while(self, filter_function) -> str:
         characters = ""
-        while filter_function(self.char()):
-            characters += self.char()
-            ok = self.advance()
-            if not ok:
-                return (characters, True)
-        self.pos -= 1
-        self.col -= 1
-        return (characters, False)
-
-    #returns the next token of the file
-    #returns EOF token if no new tokens can be found
+        while True:
+            if self.__peek_char() == None:
+                return characters
+            if not filter_function(self.__peek_char()):
+                return characters
+            characters += self.__char()
+    
     def next(self) -> Token:
-        if self.at_eof:
-            return Token(self.row, self.col, TokenKind.EOF)
-        if not self.skip_whitespace():
-            return Token(self.row, self.col, TokenKind.EOF)
+        #since newline counts as whitespace this mandatory to check before
+        if self.__peek_char():
+            if self.__peek_char() == "\n":
+                self.__consume()
+                self.row += 1
+                self.col = 0
+                return Token(TokenKind.NEWLINE, "\n", self.row, self.col, self.filename)
+        else:
+            return Token(TokenKind.EOF, "", self.row, self.col, self.filename)
         
-        first_character = self.char()
+        #skip to first character of next token
+        eof = self.__skip_whitespace()
+        if eof: return Token(TokenKind.EOF, "", self.row, self.col, self.filename)
 
-        token = Token(self.row, self.col)
+        #create our token object
+        token = Token(None, "", self.row, self.col, self.filename)
+        
+        #get the first character of our token
+        first_character = self.__char()
+
         match first_character:
             case "+": token.kind = TokenKind.PLUS
             case "-": token.kind = TokenKind.DASH
             case "*": token.kind = TokenKind.ASTERISK
-            case ":": token.kind = TokenKind.COLON
+            case "/": token.kind = TokenKind.SLASH_FORWARD
+            case "#":
+                _ = self.__get_characters_while(lambda x: x != "\n")
+                if self.__peek_char() == None:
+                    token.kind = TokenKind.EOF
+                else:
+                    return self.next()
+            case "\"":
+                token.kind = TokenKind.LITERAL_STRING
+                token.value = self.__get_characters_while(lambda x: x != "\"")
+                assert self.__peek_char() != None, f"Expected \" to end string literal started at row: {token.row+1} col: {token.col+1}"
+                self.__consume()
+            
+            case ".": token.kind = TokenKind.DOT
             case "(": token.kind = TokenKind.LPAREN
             case ")": token.kind = TokenKind.RPAREN
-            case "{": token.kind = TokenKind.LCURLY
-            case "}": token.kind = TokenKind.RCURLY
-            case "[": token.kind = TokenKind.LBRACKET
-            case "]": token.kind = TokenKind.RBRACKET
             case ";": token.kind = TokenKind.SEMICOLON
-            case "@": token.kind = TokenKind.AT
-            case ",": token.kind = TokenKind.COMMA
-            case "/": 
-                match self.peek():
-                    #comments are covered here
-                    case "/":
-                        #reads until the next line
-                        _, _ = self.get_characters_until(lambda x: x != "\n")
-                        #if at eof dont even try and give them a token
-                        if not self.advance():
-                            return Token(self.row, self.col, TokenKind.EOF)
-                        #return the next token after the comment
-                        return self.next()
-                    case _: token.kind = TokenKind.SLASH_FORWARD
-            case "!":
-                match self.peek():
-                    case "=":
-                        token.kind = TokenKind.NOT_EQUAL
-                        self.advance()
-                    case _: token.kind = TokenKind.EXCLAMATION_MARK
-            case ">":
-                match self.peek():
-                    case "=":
-                        token.kind = TokenKind.GREATER_THAN_EQUAL
-                        self.advance()
-                    case _: token.kind = TokenKind.GREATER_THAN
-            case "<":
-                match self.peek():
-                    case "=":
-                        token.kind = TokenKind.LESS_THAN_EQUAL
-                        self.advance()
-                    case _: token.kind = TokenKind.LESS_THAN
-            case "=":
-                match self.peek():
-                    case "=":
-                        token.kind = TokenKind.DOUBLE_EQUAL
-                        self.advance()
-                    case _: token.kind = TokenKind.SINGLE_EQUAL
-            case "\"":
-                token.kind = TokenKind.LITERAL_STR
-                self.advance()
-                val, eof = self.get_characters_until(lambda x: x != "\"")
-                if eof:
-                    print(f"ERROR! Could Not Find Matching Quotation For String Literal at Row: {token.row} Col: {token.col}")
-                    sys.exit(1)
-                token.value = val
-                self.advance()
-            case _:
-                val, _ = self.get_characters_until(lambda x: x.isalnum() or x == "_" or x == ".")
-                token.value = val
-        #token may be keyword or number literal at this point
-        if token.kind == TokenKind.IDENTIFIER:
-            
-            try:
-                try:
-                    _ = int(token.value)
-                    token.kind = TokenKind.LITERAL_INT
-                except:
-                    _ = float(token.value)
-                    token.kind = TokenKind.LITERAL_FLOAT
-            except:
-                match token.value:
-                    case "if": token.kind = TokenKind.IF
-                    case "do": token.kind = TokenKind.DO
-                    case "end": token.kind = TokenKind.END
-                    case "while": token.kind = TokenKind.WHILE
-                    case "else": token.kind = TokenKind.ELSE
-                    case "proc": token.kind = TokenKind.PROC
-                    case "int": token.kind = TokenKind.TYPE_INT
-                    case "String": token.kind = TokenKind.TYPE_STR
-                    case "drop": token.kind = TokenKind.DROP
-                    case "extern": token.kind = TokenKind.EXTERN
-                    case "float": token.kind = TokenKind.TYPE_FLOAT
-                    case "pub": token.kind = TokenKind.PUB
-                    case "struct": token.kind = TokenKind.STRUCT
-                    case "true" | "false": token.kind = TokenKind.LITERAL_BOOL
-                    case "bool": token.kind = TokenKind.TYPE_BOOL
-                    case "return": token.kind = TokenKind.RETURN
-                    case "memory": token.kind = TokenKind.MEMORY
-                    case _:
-                        token.kind = TokenKind.IDENTIFIER
-        
-        at_eof = not self.advance()
-        if at_eof:
-            self.at_eof = True
-        return token
-    def back(self, pos, row, col):
-        self.pos = pos
-        self.row = row
-        self.col = col
+            case ":": token.kind = TokenKind.COLON
 
-    #returns the next token but does not advance the lexer
-    #so a call to peek_next over and over again produces the same result
-    def peek_next_token(self) -> Token:
-        cur_pos = self.pos
-        cur_row = self.row
-        cur_col = self.col
-        at_eof = self.at_eof
-        tk = self.next()
-        self.pos = cur_pos
-        self.row = cur_row
-        self.col = cur_col
-        self.at_eof = at_eof
-        return tk
+            case "=":
+                assert self.__peek_char() != None, f"cannot end file on {first_character}"
+                if self.__peek_char() == "=":
+                    self.__consume()
+                    token.kind = TokenKind.DOUBLE_EQUAL
+                else: token.kind = TokenKind.SINGLE_EQUAL
+            
+            case ">":
+                assert self.__peek_char() != None, f"cannot end file on {first_character}"
+                if self.__peek_char() == "=":
+                    self.__consume()
+                    token.kind = TokenKind.GREATER_THAN_EQUAL
+                else: token.kind = TokenKind.GREATER_THAN
+
+            case "<":
+                assert self.__peek_char() != None, f"cannot end file on {first_character}"
+                if self.__peek_char() == "=":
+                    self.__consume()
+                    token.kind = TokenKind.LESS_THAN_EQUAL
+                else: token.kind = TokenKind.LESS_THAN
+            
+            case "!":
+                assert self.__peek_char() != None, f"cannot end file on {first_character}"
+                if self.__peek_char() == "=":
+                    self.__consume()
+                    token.kind = TokenKind.NOT_EQUAL
+                else: token.kind = TokenKind.EXCLAMATION_MARK
+            #this would be a keyword, identifier or an integer/float
+            case _:
+                value = first_character
+                value += self.__get_characters_while(lambda x: x.isalnum() or x == "_")
+                if value.isnumeric():
+                    if self.__peek_char():
+                        if self.__peek_char() != ".":
+                            token.kind = TokenKind.LITERAL_INT
+                        else:
+                            token.kind = TokenKind.LITERAL_FLOAT
+                            value += self.__char()
+                            rest = self.__get_characters_while(lambda x: x.isnumeric())
+                            value += rest
+                else:
+                    match value:
+                        case "proc": token.kind = TokenKind.PROC
+                        case "do": token.kind = TokenKind.DO
+                        case "if": token.kind= TokenKind.IF
+                        case "while": token.kind = TokenKind.WHILE
+                        case "end": token.kind = TokenKind.END
+                        case "true" | "false": token.kind = TokenKind.LITERAL_BOOL
+                        case _: token.kind = TokenKind.IDENTIFIER
+                token.value = value
+
+        
+        return token
+
+
+        
+        
+        
+
+
+
+
+
+
+
+
