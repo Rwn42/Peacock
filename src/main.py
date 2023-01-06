@@ -1,6 +1,6 @@
 import sys
 from lexer import *
-from compiler2 import *
+from compiler import *
 
 def main():
     source_file = sys.argv[1]
