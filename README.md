@@ -1,5 +1,5 @@
 # Peacock
-Stack-based, concatenative language that compiles (hopefully) to web assembly.
+Language that compiles to web-assembly. served as a learning experience to learn about wasm/wat. The project is basically complete although I may try and implement arrays in the future.
 
 ## The Hello World
 ```
@@ -13,9 +13,10 @@ end
 ## Quickstart
 the language currently only supports a custom WASM environment (the js code is included). Additionally, it compiles to .wat files so a tool like wat2wasm will be required.
 
-## A note on WASI
+### A note on WASI
 originally I was targetting a wasi interface but I found the project more fun, easier and more flexible if I made my own JS envrironment. WASI support is not ruled out for the future.
 
+### Building and Running
 compile command: <br>
 `python src/main.py examples/test.pk`<br>
 `wat2wasm output.wat`<br>
