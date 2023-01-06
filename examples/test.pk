@@ -7,12 +7,16 @@ struct Vec2
     y: int
 end
 
+proc get_x(v:Vec2) int do
+    return v@x
+end
+
+proc new_vec(x: int, y: int) Vec2 do
+    v: Vec2 = {x, y}
+    return v
+end
+
 pub proc main() do
-    p: Vec2 = {5, 6}
-    puti(p@x)
-    puti(p@y)
-    p@x = 10;
-    p@y = 11;
-    puti(p@x)
-    puti(p@y)
+    my_vec: Vec2 = new_vec(1, 2);
+    puti(my_vec@x)
 end

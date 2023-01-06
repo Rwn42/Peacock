@@ -130,6 +130,12 @@ class Compiler:
         elif identifier in current_function.params:
             type_ = current_function.params[identifier]
             code.append(f"local.get ${identifier}\n")
+            if self.lexer.peek_next_token().kind == TokenKind.AT:
+                _ = self.lexer.next()
+                field = self.lexer.next().value
+                code.append(f"i32.const {self.structs[type_][field][1]}")
+                code.append("i32.add")
+                code.append(f"{self.types[self.structs[type_][field][0]]}.load")
         elif self.lexer.peek_next_token().kind == TokenKind.LPAREN:
             for fn in self.functions:
                 if fn.name == identifier:
@@ -439,7 +445,7 @@ class Compiler:
                     code, _ = self.compile_expression([TokenKind.END, TokenKind.SEMICOLON])
                     result.extend(code)
                 case _:
-                    print("bizzare")
+                    print(f"unexpected token {token}")
                     sys.exit()
     def save(self):
         with open("output.wat", "w") as f:

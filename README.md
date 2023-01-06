@@ -89,5 +89,10 @@ proc access() do
     point:Vec2 = {0, 5}
     return point@y
 end
+
+proc new_vec2(x: int, y: int) Vec2 do
+    v: Vec2 = {x, y}
+    return v
+end
 ```
 
