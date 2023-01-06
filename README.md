@@ -97,3 +97,17 @@ proc new_vec2(x: int, y: int) Vec2 do
 end
 ```
 
+### Memory
+with use of the memory keyword we can create arrays (currently float arrays are not supported due to a lacking type system.)
+
+```
+extern puti(x:int) end
+
+//declare 100 bytes of memory
+memory x 100 end
+
+proc main() do 
+    x[0] = 10;
+    puti(x[0])
+end
+```

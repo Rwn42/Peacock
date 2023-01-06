@@ -40,8 +40,11 @@ class TokenKind(Enum):
     STRUCT = auto()
     RCURLY = auto()
     LCURLY = auto()
+    RBRACKET = auto()
+    LBRACKET = auto()
     DOT = auto()
     EXTERN = auto()
+    MEMORY = auto()
     PUB = auto()
     TYPE_INT = auto()
     TYPE_STR = auto()
@@ -136,6 +139,8 @@ class Lexer:
             case ")": token.kind = TokenKind.RPAREN
             case "{": token.kind = TokenKind.LCURLY
             case "}": token.kind = TokenKind.RCURLY
+            case "[": token.kind = TokenKind.LBRACKET
+            case "]": token.kind = TokenKind.RBRACKET
             case ";": token.kind = TokenKind.SEMICOLON
             case "@": token.kind = TokenKind.AT
             case ",": token.kind = TokenKind.COMMA
@@ -215,6 +220,7 @@ class Lexer:
                     case "true" | "false": token.kind = TokenKind.LITERAL_BOOL
                     case "bool": token.kind = TokenKind.TYPE_BOOL
                     case "return": token.kind = TokenKind.RETURN
+                    case "memory": token.kind = TokenKind.MEMORY
                     case _:
                         token.kind = TokenKind.IDENTIFIER
         

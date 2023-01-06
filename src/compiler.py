@@ -111,6 +111,7 @@ class Compiler:
 
         #keeps track of linear memory used
         self.lm_head = 0
+
     
     #returns code to push the identifer and the type for convience
     def use_declared_identifier(self, identifier_tk: Token) -> tuple[list[str], str]:
@@ -154,8 +155,19 @@ class Compiler:
                 print(f"Undeclared Procedure {identifier_tk}")
                 sys.exit()
         elif identifier in self.constants:
-            code.append(f"global.get ${identifier}")
-            type_ = self.constants[identifier][0]
+            if self.lexer.peek_next_token().kind == TokenKind.LBRACKET:
+                _ = self.lexer.next()
+                index_expr, _ = self.compile_expression([TokenKind.RBRACKET])
+                _ = self.lexer.next()
+                code.append(f"global.get ${identifier}")
+                code.extend(index_expr)
+                code.append("i32.add")
+                code.append("i32.const 4")
+                code.append("i32.mul")
+                code.append("i32.load")
+            else:
+                code.append(f"global.get ${identifier}")
+                type_ = self.constants[identifier][0]
         else:
             print(f"Undeclared Identifier {identifier}")
             sys.exit()
@@ -304,6 +316,7 @@ class Compiler:
                     if self.next_proc_public:
                         self.next_proc_public = False
                     body = self.compile_until([TokenKind.END])
+                    _ = self.lexer.next()
                     self.functions[len(self.functions)-1].add_body(body)
                     self.functions[len(self.functions)-1].update_types(self.types)
                 case TokenKind.IDENTIFIER:
@@ -325,7 +338,19 @@ class Compiler:
                         type_ = self.lexer.next().value
                         self.structs[name][field] = (type_, offset)
                         offset += 4
+                    _ = self.lexer.next()
                     self.types[name] = "i32"
+                case TokenKind.MEMORY:
+                    mem_name = self.lexer.next().value
+                    size = self.lexer.next().value
+                    element_size = self.lexer.next().value
+                    self.add_constant(Constant(mem_name, "int", str(self.lm_head)))
+                    self.lm_head += int(size) * int(element_size)
+                    assert self.lexer.next().kind == TokenKind.END, f"Expected End Not {token}"
+                case _:
+                    print(f"Unexpected Token At Top Level {token}")
+                    sys.exit()
+                    
                     
 
 
@@ -437,7 +462,21 @@ class Compiler:
                             result.append("i32.add")
                             result.extend(expr)
                             result.append(f"{self.types[self.structs[type_][field][0]]}.store")
-
+                        case TokenKind.LBRACKET:
+                            _ = self.lexer.next()
+                            index_expr, _ = self.compile_expression([TokenKind.RBRACKET])
+                            _ = self.lexer.next()
+                            assert self.lexer.next().kind == TokenKind.SINGLE_EQUAL, f"Expected Equal Sign {token}"
+                            expr, type_ = self.compile_expression([TokenKind.END, TokenKind.SEMICOLON])
+                            _ = self.lexer.next()
+                            ide, _ = self.use_declared_identifier(token)
+                            result.extend(ide)
+                            result.extend(index_expr)
+                            result.append("i32.add")
+                            result.append("i32.const 4")
+                            result.append("i32.mul")
+                            result.extend(expr)
+                            result.append(f"{self.types[type_]}.store")
                         case TokenKind.LPAREN | _:
                             code, type_ = self.use_declared_identifier(token)
                             result.extend(code)

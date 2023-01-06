@@ -2,21 +2,23 @@ extern puts(x:int, y:int) end
 extern puti(num:int) end
 extern putf(num:float) end
 
-struct Vec2
-    x: int
-    y: int
+
+memory arr 100 4 end
+
+proc fill_array(amount: int, value: int) do
+    i: int = 0;
+    while i < amount do
+        arr[i] = value;
+        i = i 1 +;
+    end
 end
 
-proc get_x(v:Vec2) int do
-    return v@x
-end
-
-proc new_vec(x: int, y: int) Vec2 do
-    v: Vec2 = {x, y}
-    return v
-end
 
 pub proc main() do
-    my_vec: Vec2 = new_vec(1, 2);
-    puti(my_vec@x)
+    fill_array(30, 40)
+    i: int = 0;
+    while i < 30 do
+        puti(arr[i])
+        i = i 1 +;
+    end
 end

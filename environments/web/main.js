@@ -22,6 +22,7 @@ async function load(){
         }
     })
     instance.exports.main()
+    console.log(instance.exports.memory)
 
 };
 
