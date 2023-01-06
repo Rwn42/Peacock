@@ -1,5 +1,5 @@
 # Peacock
-Language that compiles to web-assembly. served as a learning experience to learn about wasm/wat. The project is basically complete although I may try and implement arrays in the future.
+Language that compiles to web-assembly. served as a learning experience to learn about wasm/wat.
 
 ## The Hello World
 ```
@@ -9,6 +9,24 @@ pub proc main() do
     puts("Hello, world")
 end
 ```
+
+## Future plans
+- [] improve lexer (make newlines tokens, tokenize . correctly)
+- [] implement better type system (types should have size, pointers ect.)
+- [] maybe implement a rudimentry AST before compilation
+- [] implement local memory so the lm_head moves back at the end of the function
+- [] compile to IR so I could make a custom interpreter if i wanted
+- [] implement load/store operator for linear memory
+- [] remove structs in favour of a standard library implementation using load/store instructions
+- [] implement more on strings allowing passing to functions ect.
+    (note for me we cant treat strings as struct because using linear memory
+    instead of pushing length onto stack seems like a bad idea. current idea is make String type a macro for (start: int, length: int)
+- [] add ability to include other files perhaps with namespacing
+- [] improve environment move to a node environment to allow for file reading ect
+- [] string methods such as compare, length ect
+- [] dynamic memory allocation (unlikely to get here but would be cool)
+- [] better cli
+- [] re-write in compiled language (rust probably, maybe c++ or go tho.)
 
 ## Quickstart
 the language currently only supports a custom WASM environment (the js code is included). Additionally, it compiles to .wat files so a tool like wat2wasm will be required.
