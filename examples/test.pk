@@ -3,7 +3,7 @@ extern puti(num:int) end
 extern putf(num:float) end
 
 
-memory arr 100 4 end
+memory arr 100 end
 
 proc fill_array(amount: int, value: int) do
     i: int = 0;

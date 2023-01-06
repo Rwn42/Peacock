@@ -343,9 +343,8 @@ class Compiler:
                 case TokenKind.MEMORY:
                     mem_name = self.lexer.next().value
                     size = self.lexer.next().value
-                    element_size = self.lexer.next().value
                     self.add_constant(Constant(mem_name, "int", str(self.lm_head)))
-                    self.lm_head += int(size) * int(element_size)
+                    self.lm_head += (int(size) * 4)
                     assert self.lexer.next().kind == TokenKind.END, f"Expected End Not {token}"
                 case _:
                     print(f"Unexpected Token At Top Level {token}")
