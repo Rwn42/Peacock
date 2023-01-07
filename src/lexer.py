@@ -20,16 +20,24 @@ class TokenKind(Enum):
     GREATER_THAN_EQUAL = auto()
     DOT = auto(),
     SEMICOLON = auto()
-    COLON = auto()
+    COMMA = auto()
     EXCLAMATION_MARK = auto()
     LPAREN = auto(),
     RPAREN = auto(),
     SINGLE_EQUAL = auto(),
     PROC = auto(),
     DO = auto()
+    HAT = auto()
+    TYPE_ = auto()
+    COLON = auto()
     WHILE = auto()
     IF = auto()
     END = auto()
+    ELSE = auto()
+    MEMORY = auto()
+    RETURN = auto()
+    EXTERN = auto()
+    PUB = auto()
     IDENTIFIER = auto()
 
 
@@ -133,8 +141,9 @@ class Lexer:
             case "(": token.kind = TokenKind.LPAREN
             case ")": token.kind = TokenKind.RPAREN
             case ";": token.kind = TokenKind.SEMICOLON
+            case ",": token.kind = TokenKind.COMMA
+            case "^": token.kind = TokenKind.HAT
             case ":": token.kind = TokenKind.COLON
-
             case "=":
                 assert self.__peek_char() != None, f"cannot end file on {first_character}"
                 if self.__peek_char() == "=":
@@ -180,15 +189,28 @@ class Lexer:
                         case "proc": token.kind = TokenKind.PROC
                         case "do": token.kind = TokenKind.DO
                         case "if": token.kind= TokenKind.IF
+                        case "else": token.kind = TokenKind.ELSE
                         case "while": token.kind = TokenKind.WHILE
                         case "end": token.kind = TokenKind.END
                         case "true" | "false": token.kind = TokenKind.LITERAL_BOOL
+                        case "return": token.kind = TokenKind.RETURN
+                        case "memory": token.kind = TokenKind.MEMORY
+                        case "pub": token.kind = TokenKind.PUB
                         case _: token.kind = TokenKind.IDENTIFIER
                 token.value = value
 
         
         return token
 
+    def peek_next_token(self) -> Token:
+        cur_pos = self.pos
+        cur_row = self.row
+        cur_col = self.col
+        tk = self.next()
+        self.pos = cur_pos
+        self.row = cur_row
+        self.col = cur_col
+        return tk
 
         
         
