@@ -197,6 +197,8 @@ class Compiler:
     def save(self):
         with open("./output.wat", "w") as fp:
             fp.write("(module\n")
+            for sig in self.parser.external_func_signatures:
+                fp.write(f"{sig}\n")
             fp.write("(memory 1)\n")
             fp.write('(export "memory" (memory 0))\n')
             for f in self.parser.functions:

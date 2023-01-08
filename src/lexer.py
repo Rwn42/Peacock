@@ -199,6 +199,7 @@ class Lexer:
                         case "true" | "false": token.kind = TokenKind.LITERAL_BOOL
                         case "return": token.kind = TokenKind.RETURN
                         case "memory": token.kind = TokenKind.MEMORY
+                        case "extern": token.kind = TokenKind.EXTERN
                         case "pub": token.kind = TokenKind.PUB
                         case _: token.kind = TokenKind.IDENTIFIER
                 token.value = value

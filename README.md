@@ -3,7 +3,7 @@ Language that compiles to web-assembly. served as a learning experience to learn
 
 ## The Hello World
 ```
-extern puts(x:int, y:int) end
+extern puts(x int, y int) end
 
 pub proc main() do
     puts("Hello, world")
@@ -12,12 +12,12 @@ end
 
 ## Future plans
 - [x] improve lexer (make newlines tokens, tokenize . correctly)
-- [] implement better type system (types should have size, pointers ect.)
+- [x] implement better type system (types should have size, pointers ect.)
 - [x] maybe implement a rudimentry AST before compilation
 (not an ast but we did some parsing so ill mark as complete)
-- [] implement local memory so the lm_head moves back at the end of the function
+- [x] implement local memory so the lm_head moves back at the end of the function
 - [] compile to IR so I could make a custom interpreter if i wanted
-- [] implement load/store operator for linear memory
+- [x] implement load/store operator for linear memory
 - [] remove structs in favour of a standard library implementation using load/store instructions
 - [] implement more on strings allowing passing to functions ect.
     (note for me we cant treat strings as struct because using linear memory
@@ -69,24 +69,23 @@ end
 
 ### While Loop
 ```
-i: int = 10;
+i: int = 10
 while i < 10 do
-    i = i 1 +;
+    i = i 1 +
 end
 ```
 
 ### Variables
 declaration: `name:type` <br>
-assignment: `name = expression end` <br>
-declaration and assignment: `name:type = expression end`
-**Instead of `end` `;` is also supported to end variable assignments**
+assignment: `name = expression` <br>
+declaration and assignment: `name:type = expression `
 
-### Constants
+### Constants (Not Implemented in Current Version)
 declaration: `name:type:value end` <br>
 
 ### Functions
 ```
-proc add(x:int, y:int) int do
+proc add(x int, y int) int do
     return x y +
 end
 ```
@@ -95,38 +94,24 @@ to the host environment.
 
 ### Extern Keyword
 Since web-assembly supports calling functions from other environments such as JavaScript or the runtime like wasmtime the extern keyword gives the compiler nessecary information about functions you may call from the host environment.
-`extern some_function(x:int, y:int) int end`
+`extern some_function(x int, y int) int end`
 
-### Structures
-```
-struct Vec2
-x: int
-y: int
-end
-
-//returns 5
-proc access() do
-    point:Vec2 = {0, 5}
-    return point@y
-end
-
-proc new_vec2(x: int, y: int) Vec2 do
-    v: Vec2 = {x, y}
-    return v
-end
-```
 
 ### Memory
-with use of the memory keyword we can create arrays (currently float arrays are not supported due to a lacking type system.)
-
+the memory keyword statically allocates some linear memory.
+the `x` identifier in this case is a pointer to the start
 ```
-extern puti(x:int) end
-
-//declare 100 bytes of memory
-memory x 100 end
+extern puti(x int) end
 
 proc main() do 
-    x[0] = 10;
-    puti(x[0])
+    //allocate 10 integers or 40 bytes (the size must be known at compile time)
+    //dynamic allocation not yet supported
+    memory x int 10
+
+    //store 10 at position 0 in the allocated chunk
+    x.0 <- 10
+
+    //accesses position 0 and print
+    puti(x.0)
 end
 ```

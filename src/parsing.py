@@ -14,8 +14,17 @@ class Parser:
     def __init__(self, lexer:Lexer):
         self.lexer = lexer
         self.functions = {}
+        self.external_func_signatures = []
         self.next_function_public = False
         self.current_function = None
+        self.types = {
+            "int": "i32",
+            "bool": "i32",
+            "float": "f32",
+            "^int": "i32",
+            "^bool": "i32",
+            "^float": "i32",
+        }
     
     
     def get_until(self, until: list[TokenKind], allowed: list[TokenKind] = expression_tokens) -> list[Token]:
@@ -174,6 +183,38 @@ class Parser:
                 self.functions[name]["body"] = body
                 if self.next_function_public:
                     self.next_function_public = False
+            case TokenKind.EXTERN:
+                name = self.lexer.next().value
+                signature = []
+                signature.append(f'(import "env" "{name}" (func ${name} ')
+                _ = self.expect(TokenKind.LPAREN)
+                params = {}
+                while self.lexer.peek_next_token().kind != TokenKind.RPAREN:
+                    p_name = self.lexer.next().value
+                    p_type = self.parse_type().value
+                    if p_type.startswith("^"):
+                        p_type = "int"
+                    params[p_name] = p_type
+                    if self.lexer.peek_next_token().kind == TokenKind.COMMA:
+                        _ = self.lexer.next()
+                    else:
+                        break
+                _ = self.lexer.next()
+                return_type = None
+                if self.lexer.peek_next_token().kind != TokenKind.END:
+                    return_type = self.parse_type().value
+                    if return_type.startswith("^"):
+                        return_type = "int"
+                    
+                    _ = self.expect(TokenKind.END)
+                else:
+                    _ = self.lexer.next()
+                for p in params:
+                    signature.append(f"(param ${p} {self.types[params[p]]})")
+                if return_type:
+                    signature.append(f"(result {self.types[return_type]})")
+                signature.append("))")
+                self.external_func_signatures.append("".join(signature))
             case TokenKind.EOF:
                 return
         self.parse()

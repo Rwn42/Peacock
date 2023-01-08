@@ -1,3 +1,5 @@
+extern puts(x int, y int) end
+
 pub proc main() do
     memory x int 10
     x.1 <- 10
