@@ -1,7 +1,5 @@
-proc add(x int, y int) int do
-    return x y +
-end
-
 pub proc main() do
-    return add(3, 4)
+    memory x int 10
+    x.1 <- 10
+    breakfast: int = x.1
 end

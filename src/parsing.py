@@ -33,6 +33,13 @@ class Parser:
                     _ = self.lexer.next()
                     result.append(tk)
                     pass
+                elif self.lexer.peek_next_token().kind == TokenKind.DOT:
+                    dot = self.lexer.next()
+                    offset = self.lexer.next()
+                    result.append(offset)
+                    result.append(tk)
+                    result.append(Token(TokenKind.PLUS, "", dot.row, dot.col, dot.file))
+                    result.append(dot)
                 else:
                     result.append(tk)
                     continue
@@ -89,10 +96,27 @@ class Parser:
                         result.extend(self.get_until([TokenKind.NEWLINE, TokenKind.SEMICOLON]))
                         result.append(equal_token)
                         result.append(token)
+                elif self.lexer.peek_next_token().kind == TokenKind.DOT:
+                    dot = self.lexer.next()
+                    offset = self.lexer.next()
+                    eq = self.expect(TokenKind.SLIM_ARROW)
+                    expr = self.get_until([TokenKind.NEWLINE, TokenKind.SEMICOLON])
+                    result.append(offset)
+                    result.append(token)
+                    result.append(Token(TokenKind.PLUS, "", dot.row, dot.col, dot.file))
+                    result.append(Token(TokenKind.LITERAL_INT, "4", dot.row, dot.col, dot.file))
+                    result.append(Token(TokenKind.ASTERISK, "", dot.row, dot.col, dot.file))
+                    result.extend(expr)
+                    result.append(dot)
+                    result.append(eq)
+
+
+
             case TokenKind.MEMORY:
                 result.append(token)
                 name = self.lexer.next()
                 type_ = self.parse_type()
+                self.functions[self.current_function]["locals"][name.value] = "^"+type_.value
                 result.extend(self.get_until([TokenKind.NEWLINE, TokenKind.SEMICOLON]))
                 result.append(name)
                 result.append(type_)

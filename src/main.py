@@ -39,7 +39,7 @@ def main():
     f.close()
     
     p = Parser(lexer)
-    # print_parsing_output(p)
+    #print_parsing_output(p)
     p.parse()
     c = Compiler(p)
     c.save()

@@ -28,6 +28,7 @@ class TokenKind(Enum):
     PROC = auto(),
     DO = auto()
     HAT = auto()
+    SLIM_ARROW = auto()
     TYPE_ = auto()
     COLON = auto()
     WHILE = auto()
@@ -163,6 +164,9 @@ class Lexer:
                 if self.__peek_char() == "=":
                     self.__consume()
                     token.kind = TokenKind.LESS_THAN_EQUAL
+                elif self.__peek_char() == "-":
+                    self.__consume()
+                    token.kind = TokenKind.SLIM_ARROW
                 else: token.kind = TokenKind.LESS_THAN
             
             case "!":

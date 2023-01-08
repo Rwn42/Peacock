@@ -14,6 +14,9 @@ class Compiler:
             "int": "i32",
             "bool": "i32",
             "float": "f32",
+            "^int": "i32",
+            "^bool": "i32",
+            "^float": "i32",
         }
         self.current_type = None
         self.declared_ids = {}
@@ -22,6 +25,11 @@ class Compiler:
         self.current_token_idx = 0
     
         self.loops_added = 0
+
+        self.linear_written = 0
+
+        #dict of name to size
+        self.user_types = {}
     def next_token(self) -> Token:
         self.current_token_idx += 1
         return self.current_tokens[self.current_token_idx-1]
@@ -52,8 +60,10 @@ class Compiler:
 
         self.current_tokens = f["body"]
         self.current_token_idx = 0
+        lm_head = self.linear_written
         result.extend(self.compile_until())
         result.append(")")
+        self.linear_written = lm_head
 
         #removing from declared identifiers
         for p in f["params"]:
@@ -108,11 +118,19 @@ class Compiler:
                         sys.exit()
                     else:
                         result.append(f"local.set ${var.value}")
+                case TokenKind.DOT:
+                    if self.peek_next().kind == TokenKind.SLIM_ARROW:
+                        _ = self.next_token()
+                        result.append(f"{self.types[self.current_type]}.store")
+                    else:
+                        result.append(f"i32.const 4")
+                        result.append(f"i32.mul")
+                        result.append(f"{self.types[self.current_type.removeprefix('^')]}.load")
 
                 
                 case TokenKind.PLUS: result.append(f"{self.types[self.current_type]}.add")
-                case TokenKind.DASH: result.append(f"{self.types[self.current_type]}.mul")
-                case TokenKind.ASTERISK: result.append(f"{self.types[self.current_type]}.sub")
+                case TokenKind.DASH: result.append(f"{self.types[self.current_type]}.sub")
+                case TokenKind.ASTERISK: result.append(f"{self.types[self.current_type]}.mul")
                 case TokenKind.SLASH_FORWARD: result.append(f"{self.types[self.current_type]}.div")
 
                 case TokenKind.DOUBLE_EQUAL: result.append(f"{self.types[self.current_type]}.eq")
@@ -143,9 +161,44 @@ class Compiler:
                     result.append(")")
                 case TokenKind.RETURN:
                     result.append("return")
+                case TokenKind.MEMORY:
+                    size_expr = []
+                    token = self.next_token()
+                    while token.kind != TokenKind.IDENTIFIER:
+                        size_expr.append(token)
+                        token = self.next_token()
+                    name = token.value
+                    type_ = self.next_token().value
+                    type_size = 4
+                    if type_ in self.user_types:
+                        type_size = self.user_types[type_size]
+                    allocated_amount = self.comptime_eval(size_expr) * type_size
+                    result.append(f"i32.const {allocated_amount + self.linear_written}")
+                    self.linear_written += allocated_amount
+                    result.append(f"local.set ${name}")
+
+    def comptime_eval(self, expr: list[Token]) -> int:
+        stack = []
+        for t in expr:
+            match t.kind:
+                case TokenKind.LITERAL_INT: stack.append(int(t.value))
+                case TokenKind.PLUS:
+                    stack.append(stack.pop() + stack.pop())
+                case TokenKind.DASH:
+                    stack.append(stack.pop() - stack.pop())
+                case TokenKind.ASTERISK:
+                    stack.append(stack.pop() * stack.pop())
+                case TokenKind.SLASH_FORWARD:
+                    stack.append(stack.pop() / stack.pop())
+                case _:
+                    print(f"Token {t} not allowed in memory declaration")
+                    sys.exit()
+        return stack.pop()
     def save(self):
         with open("./output.wat", "w") as fp:
             fp.write("(module\n")
+            fp.write("(memory 1)\n")
+            fp.write('(export "memory" (memory 0))\n')
             for f in self.parser.functions:
                 fp.write("\n".join(self.compile_function(f)))
             fp.write(")")
