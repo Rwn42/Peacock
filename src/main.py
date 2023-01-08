@@ -1,6 +1,7 @@
 import sys
 from lexer import *
 from parsing import Parser
+from compiler import Compiler
 
 def print_parsing_output(p: Parser):
     p.parse()
@@ -28,6 +29,8 @@ def print_lexer_output(l: Lexer):
         print(t)
         t = l.next()
 
+
+
 def main():
     source_file = sys.argv[1]
 
@@ -36,7 +39,10 @@ def main():
     f.close()
     
     p = Parser(lexer)
-    print_parsing_output(p)
+    # print_parsing_output(p)
+    p.parse()
+    c = Compiler(p)
+    c.save()
 
 
 

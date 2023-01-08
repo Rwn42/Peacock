@@ -1,5 +1,7 @@
-pub proc main() int do
-    if 2 1 + == 2 3 + do
-        return func(1, 2)
-    end
+proc add(x int, y int) int do
+    return x y +
+end
+
+pub proc main() do
+    return add(3, 4)
 end

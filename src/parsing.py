@@ -49,7 +49,7 @@ class Parser:
         token = self.lexer.next()
         match token.kind:
             case TokenKind.IF:
-                result.append(token)
+                #result.append(token)
                 result.extend(self.get_until(Parser.comparison_tokens))
                 comparison_token = self.lexer.next()
                 result.extend(self.get_until([TokenKind.DO]))
@@ -99,6 +99,7 @@ class Parser:
                 _ = self.lexer.next()
             case TokenKind.RETURN:
                 result.extend(self.get_until([TokenKind.NEWLINE, TokenKind.SEMICOLON]))
+                result.append(token)
             case TokenKind.ELSE: result.append(token)
             case TokenKind.NEWLINE: pass
         return result
@@ -145,6 +146,7 @@ class Parser:
                 self.current_function = name
                 while self.lexer.peek_next_token().kind != TokenKind.END:
                     body.extend(self.organize_statement())
+                body.append(self.lexer.next())
                 self.functions[name]["body"] = body
                 if self.next_function_public:
                     self.next_function_public = False

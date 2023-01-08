@@ -11,9 +11,10 @@ end
 ```
 
 ## Future plans
-- [] improve lexer (make newlines tokens, tokenize . correctly)
+- [x] improve lexer (make newlines tokens, tokenize . correctly)
 - [] implement better type system (types should have size, pointers ect.)
-- [] maybe implement a rudimentry AST before compilation
+- [x] maybe implement a rudimentry AST before compilation
+(not an ast but we did some parsing so ill mark as complete)
 - [] implement local memory so the lm_head moves back at the end of the function
 - [] compile to IR so I could make a custom interpreter if i wanted
 - [] implement load/store operator for linear memory
