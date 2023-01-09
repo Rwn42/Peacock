@@ -23,6 +23,9 @@ class Compiler:
 
         self.current_tokens = []
         self.current_token_idx = 0
+
+        self.data_section_written = 8
+        self.strings = []
     
         self.loops_added = 0
 
@@ -105,7 +108,10 @@ class Compiler:
                     result.append(f"i32.const {1 if tk.value == 'true' else 0}")
                     self.current_type = "bool"
                 case TokenKind.LITERAL_STRING: 
-                    print("strings not implemented")
+                    self.strings.append(tk.value)
+                    result.append(f"i32.const {self.data_section_written}")
+                    result.append(f"i32.const {len(tk.value)}")
+                    self.data_section_written += len(tk.value)
                     self.current_type = "string"
                 case TokenKind.IDENTIFIER:
                     code, type_ = self.push_identifier(tk.value)
