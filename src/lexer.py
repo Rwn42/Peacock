@@ -1,5 +1,6 @@
 from enum import Enum, auto 
 from typing import Optional
+from util import eprint
 
 class TokenKind(Enum):
     PLUS = auto(),
@@ -51,7 +52,10 @@ class Token:
         self.file = filename
     
     def __repr__(self):
-         rep = f"{self.value}, of kind {self.kind.name}, at row: {self.row+1} col: {self.col+1}"
+         name_or_kind = self.kind.name
+         if self.value != "" and not self.value.isspace():
+            name_or_kind = self.value
+         rep = f"{name_or_kind} in {self.file} at line: {self.row+1} and column: {self.col+1}"
          return rep
 
 
@@ -63,24 +67,24 @@ class Lexer:
         self.col = 0
         self.filename = filename
     
-    
+    #returns the current character pointed to by the lexer.
     def __char(self) -> str:
         self.__consume()
         return self.code[self.pos-1]
     
+    #advances the lexer 
     def __consume(self):
         self.pos += 1
         self.col += 1
     
+    #returns the current character without advancing the lexer
+    #returns none if we reached the end of the file
     def __peek_char(self) -> Optional[str]:
         if self.pos > len(self.code)-1: return None
         return self.code[self.pos]
     
-    def __peek_next_char(self) -> Optional[str]:
-        if self.pos+1 > len(self.code)-1: return None
-        return self.code[self.pos+1]
     
-    #returns true if reached end of file
+    #advances the lexer until there is no whitespace returns true if reached end of file
     def __skip_whitespace(self) -> bool:
         while True:
             if self.__peek_char():
@@ -91,6 +95,7 @@ class Lexer:
             else:
                 return True
     
+    #return every character collected until the filter function returns false
     def __get_characters_while(self, filter_function) -> str:
         characters = ""
         while True:
@@ -100,8 +105,9 @@ class Lexer:
                 return characters
             characters += self.__char()
     
+    #returns the next token returns EOF token if we reached the end.
     def next(self) -> Token:
-        #since newline counts as whitespace this mandatory to check before
+        #since newline counts as whitespace this mandatory to check before skipping whitespace
         if self.__peek_char():
             if self.__peek_char() == "\n":
                 self.__consume()
@@ -121,6 +127,8 @@ class Lexer:
         #get the first character of our token
         first_character = self.__char()
 
+        token.value += first_character
+
         match first_character:
             case "+": token.kind = TokenKind.PLUS
             case "-": token.kind = TokenKind.DASH
@@ -135,7 +143,8 @@ class Lexer:
             case "\"":
                 token.kind = TokenKind.LITERAL_STRING
                 token.value = self.__get_characters_while(lambda x: x != "\"")
-                assert self.__peek_char() != None, f"Expected \" to end string literal started at row: {token.row+1} col: {token.col+1}"
+                if self.__peek_char() == None:
+                    eprint(f"Expected \" to end string literal started at row: {token.row+1} col: {token.col+1}")
                 self.__consume()
             
             case ".": token.kind = TokenKind.DOT
@@ -146,21 +155,21 @@ class Lexer:
             case "^": token.kind = TokenKind.HAT
             case ":": token.kind = TokenKind.COLON
             case "=":
-                assert self.__peek_char() != None, f"cannot end file on {first_character}"
+                if self.__peek_char() == None: eprint( f"cannot end file on {first_character}")
                 if self.__peek_char() == "=":
                     self.__consume()
                     token.kind = TokenKind.DOUBLE_EQUAL
                 else: token.kind = TokenKind.SINGLE_EQUAL
             
             case ">":
-                assert self.__peek_char() != None, f"cannot end file on {first_character}"
+                if self.__peek_char() == None: eprint( f"cannot end file on {first_character}")
                 if self.__peek_char() == "=":
                     self.__consume()
                     token.kind = TokenKind.GREATER_THAN_EQUAL
                 else: token.kind = TokenKind.GREATER_THAN
 
             case "<":
-                assert self.__peek_char() != None, f"cannot end file on {first_character}"
+                if self.__peek_char() == None: eprint( f"cannot end file on {first_character}")
                 if self.__peek_char() == "=":
                     self.__consume()
                     token.kind = TokenKind.LESS_THAN_EQUAL
@@ -170,7 +179,7 @@ class Lexer:
                 else: token.kind = TokenKind.LESS_THAN
             
             case "!":
-                assert self.__peek_char() != None, f"cannot end file on {first_character}"
+                if self.__peek_char() == None: eprint( f"cannot end file on {first_character}")
                 if self.__peek_char() == "=":
                     self.__consume()
                     token.kind = TokenKind.NOT_EQUAL
