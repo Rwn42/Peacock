@@ -14,58 +14,55 @@ class Parser:
     def __init__(self, lexer: Lexer):
         self.lexer = lexer
     
-    #we rely on dynamic typing for this function so im not sure how to type annotate it
-    #basically it returns a list of tokens and list of tokens which may also contain further nested lists
-    #or just tokens
-    #does consume the until unlike get_until method
+    #returns a pseudo ast representing the program consumes the until token
     def parse_until(self, until:list[TokenKind]=[TokenKind.EOF]):
-        result = []
-        token = self.lexer.next()
-        while token.kind not in until:
+        result = {}
+        while True:
+            token = self.lexer.peek_next_token()
+            if token.kind in until:
+                break
+            token = self.lexer.next()
             match token.kind:
-                case TokenKind.EXTERN:
-                    code = []
-                    result.append(token)
-                    code.extend(self.parse_function_signature(TokenKind.NEWLINE))
-                    result.append(code)
+                case TokenKind.EXTERN: result[token.value] = self.parse_function_signature(TokenKind.NEWLINE)
                 case TokenKind.PROC:
-                    code = []
-                    result.append(token)
-                    code.extend(self.parse_function_signature())
-                    code.append(self.parse_until([TokenKind.END]))
-                    result.append(code)
+                    func = self.parse_function_signature()
+                    func["body"] = self.parse_until([TokenKind.END])
+                    _ = self.lexer.next()
+                    result[token.value] = func
                 case TokenKind.IF | TokenKind.WHILE:
-                    code = []
-                    result.append(token)
-                    code.extend(self.get_tokens_until(Parser.comparison_tokens))
-                    operator = self.lexer.next()
-                    code.extend(self.get_tokens_until([TokenKind.DO]))
-                    code.append(operator)
-                    code.append(self.parse_until([TokenKind.END]))
-                    result.append(code)
+                    statement = {}
+                    statement["lhs"] = self.get_values_until(Parser.comparison_tokens)
+                    statement["comparison"] = self.lexer.next().kind.name.lower()
+                    statement["rhs"] = self.get_values_until([TokenKind.DO])
+                    statement["body"] = self.parse_until([TokenKind.END, TokenKind.ELSE])
+                    statement["else"] = None
+                    if self.lexer.peek_next_token().kind == TokenKind.ELSE:
+                        _ = self.lexer.next()
+                        statement["else"] = self.parse_until([TokenKind.END])
+                    _ = self.lexer.next()
+                    result[token.value] = statement
                 case TokenKind.RETURN:
-                    result.append(token)
-                    result.append(self.get_tokens_until())
+                    result[token.value] = {"expr": self.get_values_until()}
                 case TokenKind.IDENTIFIER:
+                    statement = {}
                     next_ = self.lexer.next()
-                    result.append(token)
-                    result.append(next_)
                     if next_.kind == TokenKind.COLON:
-                        type_ = self.parse_type()
-                        result.append(type_)
+                        statement["is_decl"] = True
+                        statement["type"] = self.parse_type()
                         if self.lexer.peek_next_token().kind == TokenKind.SINGLE_EQUAL:
                             _ = self.lexer.next()
-                            result.append(self.get_tokens_until())
+                            statement["expr"] = self.get_values_until()
                     elif next_.kind == TokenKind.SINGLE_EQUAL:
-                        result.append(self.get_tokens_until())
+                        statement["is_decl"] = False
+                        statement["expr"] = self.get_values_until()
                     else:
-                        eprint(f"Unexpected Token After Identifier {next_}")
+                        print(f"Unexpected Token After Identifier {next_}")
+                    result[token.value] = statement
+                
                 case _:
                     pass
-                    
+        return result        
 
-            token = self.lexer.next()
-        return result
 
     #returns all tokens between brackets (not recursive)
     #the type of bracket can be passed in as a parameter
@@ -74,58 +71,70 @@ class Parser:
     def parse_brackets(self, bracket:TokenKind=TokenKind.RPAREN):
         result = []
         while True:
-            result.append(self.get_tokens_until([TokenKind.COMMA, bracket]))
+            result.append(self.get_values_until([TokenKind.COMMA, bracket]))
             if self.lexer.next().kind == bracket:
                 return result
     
-    #get tokens until an a certain type does not consume the last one
-    def get_tokens_until(self, until: list[TokenKind]=[TokenKind.NEWLINE]) -> list[Token]:
+    #get token values until an a certain type does not consume the last one
+    def get_values_until(self, until: list[TokenKind]=[TokenKind.NEWLINE]) -> list[dict[str, TokenKind]]:
         tk = self.lexer.peek_next_token()
         result = []
         while tk.kind not in until:
             tk = self.lexer.next()
-            result.append(tk)
+            result.append((tk.value, tk.kind))
             tk = self.lexer.peek_next_token()
         return result
     
-    #returns a list becuase a pointer type such as ^int is two tokens
-    #joining them would lead to innacurate errors down the line.
-    #returns none if the token is not a type
-    def parse_type(self) -> Optional[Token]:
+    #parse an expected type
+    def parse_type(self) -> Optional[str]:
         start_tk = self.lexer.peek_next_token()
         match start_tk.kind:
             case TokenKind.IDENTIFIER:
                 _ = self.lexer.next()
-                return start_tk
+                return start_tk.value
             case TokenKind.HAT:
                 _ = self.lexer.next()
                 name = self.expect(TokenKind.IDENTIFIER).value
-                start_tk.value += name
-                start_tk.kind = TokenKind.IDENTIFIER
-                return start_tk
+                return start_tk.value + name
             case _:
                 return None
     
-    #returns a nested list of token and token lists of a function signature
-    #the user can specify what token they expect at the end of the signature
-    #for extern this is a newline for proc this is do.
+    #parse a type from a list of tokens
+    def parse_type_from(self, tokens: list[Token]) -> str:
+        start_tk = tokens[0]
+        match start_tk.kind:
+            case TokenKind.IDENTIFIER:
+                return start_tk.value
+            case TokenKind.HAT:
+                name = tokens[1]
+                return start_tk.value + name.value
+            case _:
+                return None
+
+    #returns an object with the properties for a signature set
     def parse_function_signature(self, expected_after_end: TokenKind = TokenKind.DO):
-        result = []
+        result = {}
         
         #function name
-        result.append(self.lexer.next())
+        result["name"] = self.lexer.next().value
 
         _ = self.expect(TokenKind.LPAREN)
-        #add our parameters (if any)
-        result.append(self.parse_brackets())
 
-        #see if we have return type
-        possible_type = self.parse_type()
-        #if there is not a type we expect the extern defintion to be over so a newline
-        if not possible_type:
-            _ = self.expect(expected_after_end)
-        else:
-            result.append(possible_type)
+        #add our parameters (if any)
+        params = self.parse_brackets()
+        result["params"] = {}
+        for p in params:
+            type_ = ""
+            for v in p[1:]:
+                type_ += v[0]
+            if len(p) > 0:
+                result["params"][p[0][0]] = type_
+
+        #add the return type
+        result["return_type"] = None
+        if self.lexer.peek_next_token().kind != expected_after_end:
+            result["return_type"] = self.parse_type()
+
         return result
     
     #makes sure the next token is of a certain type returns that token back to the caller if so

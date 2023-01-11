@@ -1,5 +1,9 @@
-extern puts(x int, y int) end
+extern puts(x ^int, y int) ^int
 
-pub proc main() do
-    puts("hello, world")
+proc main() do
+    if 2 == 2 do
+        return 4 2 +
+    end
+    my_var: ^int = 10
+    my_var = 100
 end
