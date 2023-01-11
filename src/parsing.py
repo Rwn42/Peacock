@@ -1,5 +1,27 @@
+from typing import TypedDict, NamedTuple, Union, Optional
+
 from lexer import *
 from util import eprint
+
+NameTypePair = NamedTuple("NameTypePair", name=str, id=int)
+FunctionCall = NamedTuple("FunctionCall", name=str, args=list["ExprFull"])
+
+#a value literal would contain a type a string would be an identfier or + - ...
+ExprNode = Union[NameTypePair, str, FunctionCall]
+ExprFull = list[ExprNode]
+Statement = Union["NodeIf", "NodeReturn", "NodeWhile", "NodeDecl", "NodeAssignment"]
+
+FuncParams = NamedTuple("FuncParams", list[NameTypePair])
+
+NodeExtern = TypedDict('NodeExtern', {'name': str, 'params': FuncParams, 'type_': str,})
+NodeFunc = TypedDict('NodeFunc', {'name': str, 'params': FuncParams, 'type_': str, "body": list[Statement]})
+NodeIf = TypedDict("NodeIf", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement]})
+NodeWhile = TypedDict("NodeWhile", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement]})
+NodeDecl = TypedDict("NodeDecl", {"id": str, "type_": str, "body": Optional[ExprFull]})
+NodeAssignment = TypedDict("NodeDecl", {"id": str, "body": ExprFull})
+NodeReturn = TypedDict("NodeReturn", {"body": ExprFull})
+
+
 
 class Parser:
     comparison_tokens = [
