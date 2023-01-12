@@ -11,6 +11,15 @@ class Compiler:
         self.exported_procs: list[str] = []
         #contains a map of ids to type for evaluating the type of expressions
         self.id_types = {}
+
+        self.comparison_map = {
+            ">": "gt_u",
+            "<": "lt_u",
+            ">=": "ge_u",
+            "<=": "le_u",
+            "==": "eq",
+            "!=": "nq",
+        }
     
     def generate_wasm(self):
         for node in self.ast:
@@ -38,12 +47,11 @@ class Compiler:
                     for n in node["body"]:
                         if n["kind"] == NodeKind.DECL:
                             code.append(f"  (local ${n['id']} {self.wasm_type(n['type_'])}) ")
-                            self.id_types[[n["id"]]] = n["type_"]
+                            self.id_types[n["id"]] = n["type_"]
                     for n in node["body"]:
                         code.extend(self.compile_statement(n))
                     code.append(")")
                     self.procedure_code.append("\n".join(code))
-                    print(self.procedure_code[0])
 
     def compile_statement(self, statement: Statement) -> list[str]:
         result = []
@@ -52,6 +60,27 @@ class Compiler:
                 expr, _ = self.compile_expression(statement["body"])
                 result.append('\n   '.join(expr))
                 result.append("return")
+            case NodeKind.ASSIGN:
+                expr, _ = self.compile_expression(statement["body"])
+                result.append('\n   '.join(expr))
+                result.append(f"local.store ${statement['id']}")
+            case NodeKind.IF:
+                lhs, _ = self.compile_expression(statement["lhs"])
+                rhs, type_ = self.compile_expression(statement["rhs"])
+                result.append("".join(lhs))
+                result.append("".join(rhs))
+                result.append(f"{self.wasm_type(type_)}.{self.comparison_map[statement['comparison']]}")
+                result.append("(if")
+                result.append("(then")
+                for s in statement["body"]:
+                    result.append("".join(self.compile_statement(s)))
+                result.append(")")
+                if statement["else"]:
+                    result.append("(else")
+                    for s in statement["else"]:
+                        result.append("".join(self.compile_statement(s)))
+                    result.append(")")
+                result.append(")")
         return result
     
     #returns the code and the type of the code
@@ -87,9 +116,21 @@ class Compiler:
                     case "/":
                         result.append(f"{self.wasm_type(type_)}.div")
                     case _:
-                        print("todo id look up")
+                        result.append(f"local.get ${expr_node}")
                     
         return (result, type_)
     def wasm_type(self, type_: str) -> str:
         if type_ == "float": return "f32"
         else: return "i32"
+    
+    def save_wasm(self) -> str:
+        final = ""
+        final += "(module\n"
+        for sig in self.extern_signatures: final += sig
+        final += "(memory 1)\n"
+        final += '(export "memory" (memory 0))\n'
+        for sig in self.exported_procs: final += sig
+        for func in self.procedure_code:
+            final += func
+        final += ")"
+        return final

@@ -24,7 +24,7 @@ FuncParams =  list[NameTypePair]
 
 NodeExtern = TypedDict('NodeExtern', {'name': str, 'params': FuncParams, 'type_': str, "kind":NodeKind})
 NodeFunc = TypedDict('NodeFunc', {'name': str, 'params': FuncParams, 'type_': str, "body": list[Statement], "pub": bool, "kind":NodeKind})
-NodeIf = TypedDict("NodeIf", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement], "kind":str})
+NodeIf = TypedDict("NodeIf", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement], "kind":NodeKind, "else":list[Statement]})
 NodeWhile = TypedDict("NodeWhile", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement], "kind":NodeKind})
 NodeDecl = TypedDict("NodeDecl", {"id": str, "type_": str, "kind":NodeKind})
 NodeAssignment = TypedDict("NodeAssignment", {"id": str, "body": ExprFull, "kind":NodeKind})
@@ -97,10 +97,13 @@ class Parser:
                     comparison = self.lexer.next().value
                     rhs = self.parse_expr_until([TokenKind.DO])
                     _ = self.lexer.next()
-                    body = self.parse_statements_until()
-                    _ = self.lexer.next()
+                    body = self.parse_statements_until([TokenKind.END, TokenKind.ELSE])
+                    else_code = None
+                    if self.lexer.next().kind == TokenKind.ELSE:
+                        else_code = self.parse_statements_until()
+                        _ = self.lexer.next()
                     if token.kind == TokenKind.IF:
-                        node: NodeIf = {"lhs": lhs, "rhs": rhs, "comparison": comparison, "body": body, "kind":NodeKind.IF}
+                        node: NodeIf = {"lhs": lhs, "rhs": rhs, "comparison": comparison, "body": body, "kind":NodeKind.IF, "else":else_code}
                         result.append(node)
                     else:
                         node: NodeWhile = {"lhs": lhs, "rhs": rhs, "comparison": comparison, "body": body, "kind":NodeKind.WHILE}

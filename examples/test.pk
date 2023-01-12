@@ -1,7 +1,12 @@
 extern puts(x ^int, y int) ^int
 
 proc main(x ^int) string do
-    return 23 2 4 main(120) +
+    if 2 == 2 do
+        return 3
+    else
+        return 4
+    end
+    return 3
 end
 
 # my_var: String = "Hello, World!"
