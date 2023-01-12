@@ -47,9 +47,10 @@ class Compiler:
                         code.append(f"  (result {self.wasm_type(node['type_'])})")
                     self.id_types[node["name"]] = node["type_"]
                     for n in node["body"]:
-                        if n["kind"] == NodeKind.DECL:
+                        if n["kind"] == NodeKind.DECL or n["kind"] == NodeKind.MEMDECL:
                             code.append(f"  (local ${n['id']} {self.wasm_type(n['type_'])}) ")
                             self.id_types[n["id"]] = n["type_"]
+
                     for n in node["body"]:
                         code.extend(self.compile_statement(n))
                     code.append(")")
@@ -99,6 +100,21 @@ class Compiler:
             case NodeKind.EXPR:
                 expr, _ = self.compile_expression(statement["body"])
                 result.append(" ".join(expr))
+            case NodeKind.MEMDECL:
+                result.append("global.get $mem_head")
+                result.append(f"local.set ${statement['id']}")
+                expr, _ = self.compile_expression(statement['size'])
+                result.append(" ".join(expr))
+                result.append("global.get $mem_head")
+                result.append("i32.add")
+                result.append("global.set $mem_head")
+            case NodeKind.MEMSTORE:
+                result.append(f"local.get ${statement['id']}")
+                offset, _ = self.compile_expression(statement["offset"])
+                result.append(" ".join(offset))
+                val, type_ = self.compile_expression(statement["body"])
+                result.append(" ".join(val))
+                result.append(f"{self.wasm_type(type_)}.store")
         return result
     
     #returns the code and the type of the code
@@ -160,7 +176,10 @@ class Compiler:
                         result.append(f"{self.wasm_type(type_)}.mul")
                     case "/":
                         result.append(f"{self.wasm_type(type_)}.div")
+                    case "!":
+                        result.append(f"{self.wasm_type(type_)}.load")
                     case _:
+                        type_ = self.id_types[expr_node]
                         result.append(f"local.get ${expr_node}")
                     
         return (result, type_)
@@ -171,11 +190,11 @@ class Compiler:
     def save_wasm(self) -> str:
         final = ""
         final += "(module\n"
-        for sig in self.extern_signatures: final += sig
+        for sig in self.extern_signatures: final += f"{sig}\n"
         final += "(memory 1)\n"
         final += '(export "memory" (memory 0))\n'
-        for sig in self.exported_procs: final += sig
-        final += f"(global $mem_head (mut i32) (i32.const {self.memory_written}))"
+        for sig in self.exported_procs: final += f"{sig}\n"
+        final += f"(global $mem_head (mut i32) (i32.const {self.memory_written}))\n"
         final += f"(data (i32.const 4) {' '.join(self.data_section)})\n"
         for func in self.procedure_code:
             final += func

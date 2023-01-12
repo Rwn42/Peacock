@@ -2,9 +2,16 @@ extern puts(s string)
 extern puti(i int)
 
 pub proc main() do
-    x: int = 0
-    while x <= 10 do
-        puti(x)
-        x = x 1 +
-    end
+    #allocate 4 integers or 16 bytes
+    memory x ^int 16
+    @x = 10
+    @x 4 + = 11
+    @x 8 + = 12
+    @x 12 + = 13
+    #this will print the numbers out to the console
+    puti(x !)
+    puti(x 4 + !)
+    puti(x 8 + !)
+    puti (x 12 + !)
+
 end

@@ -12,6 +12,9 @@ class NodeKind(Enum):
     ASSIGN = auto(),
     RETURN = auto(),
     EXPR = auto(),
+    MEMDECL = auto(),
+    MEMLOAD = auto(),
+    MEMSTORE = auto(),
 
 NameTypePair = NamedTuple("NameTypePair", name=str, type_=str)
 FunctionCall = NamedTuple("FunctionCall", name=str, args=list["ExprFull"])
@@ -19,7 +22,7 @@ FunctionCall = NamedTuple("FunctionCall", name=str, args=list["ExprFull"])
 #a value literal would contain a type so strings can be decerned from identifiers.
 ExprNode = Union[NameTypePair, str, FunctionCall]
 ExprFull = list[ExprNode]
-Statement = Union["NodeIf", "NodeReturn", "NodeWhile", "NodeDecl", "NodeAssignment", "NodeExpr"]
+Statement = Union["NodeIf", "NodeReturn", "NodeWhile", "NodeDecl", "NodeAssignment", "NodeExpr", "NodeMemDecl", "NodeMemStore", "NodeMemLoad"]
 
 FuncParams =  list[NameTypePair]
 
@@ -31,6 +34,10 @@ NodeDecl = TypedDict("NodeDecl", {"id": str, "type_": str, "kind":NodeKind})
 NodeAssignment = TypedDict("NodeAssignment", {"id": str, "body": ExprFull, "kind":NodeKind})
 NodeReturn = TypedDict("NodeReturn", {"body": ExprFull, "kind":NodeKind})
 NodeExpr = TypedDict("NodeExpr", {"body": ExprFull, "kind":NodeKind})
+NodeMemDecl = TypedDict("NodeMemDecl", {"id": str, "type_": str, "size":ExprFull, "kind":NodeKind})
+NodeMemStore = TypedDict("NodeMemStore", {"id": str, "offset": ExprFull, "body":ExprFull, "kind":NodeKind})
+NodeMemLoad = TypedDict("NodeMemLoad", {"id": str, "offset": str, "body":ExprFull, "kind":NodeKind})
+
 AST = list[Union[Statement, "NodeExtern", "NodeFunc"]]
 
 
@@ -42,7 +49,7 @@ class Parser:
     expression_tokens = [
         TokenKind.IDENTIFIER, TokenKind.LITERAL_INT, TokenKind.LITERAL_BOOL, TokenKind.LITERAL_FLOAT,
         TokenKind.LITERAL_STRING, TokenKind.PLUS, TokenKind.DASH, TokenKind.ASTERISK, TokenKind.SLASH_FORWARD,
-        TokenKind.LPAREN, TokenKind.RPAREN, 
+        TokenKind.LPAREN, TokenKind.RPAREN,  TokenKind.EXCLAMATION_MARK
     ]
     type_tokens = [
         TokenKind.IDENTIFIER, TokenKind.HAT
@@ -113,6 +120,17 @@ class Parser:
                 case TokenKind.RETURN:
                     node: NodeReturn = {"body": self.parse_expr_until(), "kind":NodeKind.RETURN}
                     result.append(node)
+                case TokenKind.MEMORY:
+                    id_ = self.expect(TokenKind.IDENTIFIER, False).value
+                    node: NodeMemDecl = {"id":id_, "type_": self.parse_type(), "size":self.parse_expr_until(), "kind":NodeKind.MEMDECL}
+                    result.append(node)
+                case TokenKind.AT:
+                        id_ = self.expect(TokenKind.IDENTIFIER, False).value
+                        offset = self.parse_expr_until([TokenKind.SINGLE_EQUAL])
+                        _ = self.lexer.next()
+                        body = self.parse_expr_until()
+                        node: NodeMemStore = {"id":id_, "offset":offset, "body":body, "kind":NodeKind.MEMSTORE}
+                        result.append(node)
                 case TokenKind.IDENTIFIER:
                     match self.lexer.peek_next_token().kind:
                         case TokenKind.COLON:

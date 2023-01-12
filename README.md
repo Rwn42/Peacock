@@ -64,7 +64,12 @@ end
 ```
 
 ### While Loops
-Currently Not Implemented
+```ruby
+x: int = 0
+while x <= 10 do
+    x = x 1 +
+end
+```
 
 ### Variables
 ```ruby
@@ -106,4 +111,21 @@ extern add(x int, y int) int
 ```
 
 ### Memory
-Not Yet Implemented
+We can only load integers at this time working on loading floats too
+```ruby
+extern puti(i int)
+proc main() do
+    #allocate 4 integers or 16 bytes
+    memory x ^int 16
+    @x = 10
+    @x 4 + = 11
+    @x 8 + = 12
+    @x 12 + = 13
+    #this will print the numbers out to the console
+    puti(x !)
+    puti(x 4 + !)
+    puti(x 8 + !)
+    puti (x 12 + !)
+
+end
+```

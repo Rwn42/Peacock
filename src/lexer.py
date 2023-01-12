@@ -33,6 +33,7 @@ class TokenKind(Enum):
     TYPE_ = auto()
     COLON = auto()
     WHILE = auto()
+    AT = auto(),
     IF = auto()
     END = auto()
     ELSE = auto()
@@ -155,6 +156,7 @@ class Lexer:
             case "^": token.kind = TokenKind.HAT
             case ":": token.kind = TokenKind.COLON
             case ";": token.kind = TokenKind.SEMICOLON
+            case "@": token.kind = TokenKind.AT
             case "=":
                 if self.__peek_char() == None: eprint( f"cannot end file on {first_character}")
                 if self.__peek_char() == "=":
