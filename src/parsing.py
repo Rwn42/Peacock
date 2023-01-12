@@ -2,6 +2,7 @@ from typing import TypedDict, NamedTuple, Union, Optional
 from enum import Enum, auto
 from lexer import *
 from util import eprint
+import os
 
 class NodeKind(Enum):
     EXTERN = auto(),
@@ -90,6 +91,15 @@ class Parser:
                     if self.lexer.peek_next_token().kind != TokenKind.PROC:
                         #this expect will always fail if reached
                         self.expect(TokenKind.PROC)
+                case TokenKind.IMPORT:
+                    filename = self.expect(TokenKind.LITERAL_STRING, False).value
+                    absp = os.path.abspath(self.lexer.filename)
+                    root = os.path.split(absp)[0]
+                    f = open(root + "/" + filename)
+                    l = Lexer(f.read(), root + "/" + filename)
+                    f.close()
+                    p = Parser(l)
+                    ast.extend(p.parse())
                 case TokenKind.NEWLINE: pass
                 case TokenKind.EOF: return ast
                 case _:

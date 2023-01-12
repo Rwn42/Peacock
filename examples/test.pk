@@ -1,5 +1,4 @@
-extern puts(s string)
-extern puti(i int)
+import "../stdlib/std.pk"
 
 proc new_int_array(length int, default int) ^int do
     memory x ^int length 4 *
@@ -15,7 +14,13 @@ proc access_arr(arr ^int, location int) int do
     return arr location 4 * + !
 end
 
+proc change_arr(arr ^int, location int, new int) do
+    @arr 4 location * + = new
+end
+
 pub proc main() do
     x: ^int = new_int_array(10, 5)
-    puti(access_arr(x, 1))
+    puti(access_arr(x, 0))
+    change_arr(x, 0, 10)
+    puti(access_arr(x, 0))
 end

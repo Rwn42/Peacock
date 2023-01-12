@@ -33,6 +33,7 @@ class TokenKind(Enum):
     TYPE_ = auto()
     COLON = auto()
     WHILE = auto()
+    IMPORT = auto()
     AT = auto(),
     IF = auto()
     END = auto()
@@ -213,6 +214,7 @@ class Lexer:
                         case "memory": token.kind = TokenKind.MEMORY
                         case "extern": token.kind = TokenKind.EXTERN
                         case "pub": token.kind = TokenKind.PUB
+                        case "import": token.kind = TokenKind.IMPORT
                         case _: token.kind = TokenKind.IDENTIFIER
                 token.value = value
 
