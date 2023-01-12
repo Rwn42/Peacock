@@ -11,6 +11,7 @@ class NodeKind(Enum):
     DECL = auto(),
     ASSIGN = auto(),
     RETURN = auto(),
+    EXPR = auto(),
 
 NameTypePair = NamedTuple("NameTypePair", name=str, type_=str)
 FunctionCall = NamedTuple("FunctionCall", name=str, args=list["ExprFull"])
@@ -18,7 +19,7 @@ FunctionCall = NamedTuple("FunctionCall", name=str, args=list["ExprFull"])
 #a value literal would contain a type so strings can be decerned from identifiers.
 ExprNode = Union[NameTypePair, str, FunctionCall]
 ExprFull = list[ExprNode]
-Statement = Union["NodeIf", "NodeReturn", "NodeWhile", "NodeDecl", "NodeAssignment"]
+Statement = Union["NodeIf", "NodeReturn", "NodeWhile", "NodeDecl", "NodeAssignment", "NodeExpr"]
 
 FuncParams =  list[NameTypePair]
 
@@ -29,6 +30,7 @@ NodeWhile = TypedDict("NodeWhile", {"lhs": ExprFull, "rhs": ExprFull, "compariso
 NodeDecl = TypedDict("NodeDecl", {"id": str, "type_": str, "kind":NodeKind})
 NodeAssignment = TypedDict("NodeAssignment", {"id": str, "body": ExprFull, "kind":NodeKind})
 NodeReturn = TypedDict("NodeReturn", {"body": ExprFull, "kind":NodeKind})
+NodeExpr = TypedDict("NodeExpr", {"body": ExprFull, "kind":NodeKind})
 AST = list[Union[Statement, "NodeExtern", "NodeFunc"]]
 
 
@@ -112,8 +114,9 @@ class Parser:
                     node: NodeReturn = {"body": self.parse_expr_until(), "kind":NodeKind.RETURN}
                     result.append(node)
                 case TokenKind.IDENTIFIER:
-                    match self.lexer.next().kind:
+                    match self.lexer.peek_next_token().kind:
                         case TokenKind.COLON:
+                            _ = self.lexer.next()
                             type_ = self.parse_type()
                             node:NodeDecl = {"kind": NodeKind.DECL, "type_":type_, "id":token.value}
                             result.append(node)
@@ -123,18 +126,27 @@ class Parser:
                                 node:NodeAssignment = {"kind": NodeKind.ASSIGN, "id":token.value, "body":body}
                                 result.append(node)
                         case TokenKind.SINGLE_EQUAL:
+                            _ = self.lexer.next()
                             body = self.parse_expr_until()
                             node:NodeAssignment = {"kind": NodeKind.ASSIGN, "body": body, "id":token.value}
+                            result.append(node)
+                        case TokenKind.LPAREN:
+                            body = self.parse_expr_until(startwith=token)
+                            node:NodeExpr = {"kind": NodeKind.EXPR, "body": body}
                             result.append(node)
                         case _:
                             eprint(f"Expected : or = after identifier {token}")
         return result
     
     #parses an expression until a desired token is reached 
-    def parse_expr_until(self, until: list[TokenKind]=[TokenKind.NEWLINE, TokenKind.SEMICOLON]) -> ExprFull:
+    def parse_expr_until(self, until: list[TokenKind]=[TokenKind.NEWLINE, TokenKind.SEMICOLON], startwith:Optional[Token]=None) -> ExprFull:
         result: ExprFull = []
         while self.lexer.peek_next_token().kind not in until:
-            token = self.lexer.next()
+            token = None
+            if startwith:
+                token = startwith
+            else:
+                token = self.lexer.next()
             if token.kind not in Parser.expression_tokens:
                 eprint(f"Unexpected Token In Expression {token}")
             match token.kind:

@@ -1,20 +1,11 @@
-extern puts(x ^int, y int) ^int
+extern puts(s string)
 
-proc main(x ^int) string do
-    if 2 == 2 do
-        return 3
+pub proc main() do
+    x: string = "Hello, World"
+    y: string = "No No No"
+    if 2 == 4 do
+        puts(x)
     else
-        return 4
+        puts(y)
     end
-    return 3
 end
-
-# my_var: String = "Hello, World!"
-# #idea 3
-# similiar to two except my_var would contain a pointer to linear memory that holds
-# the string length and after it holds the string itself.
-
-# since we know this stuff at comptime when we create our data section it would look as follows
-# (data (i32.const 2) "hi" (i32.const 3) "hey")
-
-# therefore String is really just an int^ or i32 instead of some sort of structure type

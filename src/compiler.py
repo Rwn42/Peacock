@@ -4,7 +4,8 @@ from parsing import *
 class Compiler:
     def __init__(self, ast:AST):
         self.ast = ast
-        self.memory_written = 0
+        self.memory_written = 4
+        self.data_section = []
 
         self.extern_signatures: list[str] = []
         self.procedure_code: list[str] = []
@@ -37,7 +38,7 @@ class Compiler:
                 case NodeKind.PROC:
                     code = []
                     if node["pub"]:
-                        self.exported_procs.append(f"(export (func ${node['name']}))")
+                        self.exported_procs.append(f'(export "main" (func ${node["name"]}))')
                     code.append(f"(func ${node['name']}")
                     for p in node["params"]:
                         code.append(f"  (param ${p.name} {self.wasm_type(p.type_)})")
@@ -59,11 +60,11 @@ class Compiler:
             case NodeKind.RETURN:
                 expr, _ = self.compile_expression(statement["body"])
                 result.append('\n   '.join(expr))
-                result.append("return")
+                result.append("return ")
             case NodeKind.ASSIGN:
                 expr, _ = self.compile_expression(statement["body"])
                 result.append('\n   '.join(expr))
-                result.append(f"local.store ${statement['id']}")
+                result.append(f"local.set ${statement['id']}")
             case NodeKind.IF:
                 lhs, _ = self.compile_expression(statement["lhs"])
                 rhs, type_ = self.compile_expression(statement["rhs"])
@@ -81,6 +82,9 @@ class Compiler:
                         result.append("".join(self.compile_statement(s)))
                     result.append(")")
                 result.append(")")
+            case NodeKind.EXPR:
+                expr, _ = self.compile_expression(statement["body"])
+                result.append(" ".join(expr))
         return result
     
     #returns the code and the type of the code
@@ -90,12 +94,39 @@ class Compiler:
         for expr_node in expr:
             if isinstance(expr_node, NameTypePair):
                 match expr_node.type_:
-                    case "int" | "bool":
+                    case "int":
                         result.append(f"i32.const {expr_node.name} ")
+                    case "bool":
+                        val = expr_node.name
+                        result.append(f"i32.const {1 if val == 'true' else 0} ")
                     case "float":
                         result.append(f"f32.const {expr_node.name} ")
                     case "string":
-                        eprint("Strings Not Implemented")
+                        #store pointer to start of string
+                        result.append(f"global.get $mem_head")
+                        result.append(f"i32.const {self.memory_written}")
+                        result.append("i32.store")
+                        #increment runtime memory head by 4 bytes cause we stored i32
+                        result.append("global.get $mem_head")
+                        result.append("i32.const 4")
+                        result.append("i32.add")
+                        result.append(f"global.set $mem_head")
+                        
+                        #store the length of the string
+                        result.append(f"global.get $mem_head")
+                        result.append(f"i32.const {len(expr_node.name)}")
+                        result.append("i32.store")
+
+                        result.append("global.get $mem_head")
+                        result.append("i32.const 4")
+                        result.append("i32.add")
+                        result.append(f"global.set $mem_head")
+                        #push start of this structure on the stack
+                        result.append("global.get $mem_head")
+                        result.append("i32.const 8")
+                        result.append("i32.sub")
+                        self.data_section.append(f'"{expr_node.name}"')
+                        self.memory_written += len(expr_node.name)
                 type_ = expr_node.type_
             elif isinstance(expr_node, FunctionCall):
                 for arg in expr_node.args:
@@ -103,7 +134,7 @@ class Compiler:
                     result.extend(arg_expr)
                 if expr_node.name not in self.id_types:
                     eprint(f"Undeclared Identifier {expr_node.name}")
-                result.append(f"call ${expr_node.name}")
+                result.append(f" call ${expr_node.name} ")
                 type_ = self.id_types[expr_node.name]
             else:
                 match expr_node:
@@ -130,6 +161,8 @@ class Compiler:
         final += "(memory 1)\n"
         final += '(export "memory" (memory 0))\n'
         for sig in self.exported_procs: final += sig
+        final += f"(global $mem_head (mut i32) (i32.const {self.memory_written}))"
+        final += f"(data (i32.const 4) {' '.join(self.data_section)})\n"
         for func in self.procedure_code:
             final += func
         final += ")"

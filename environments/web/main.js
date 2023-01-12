@@ -13,9 +13,9 @@ async function load(){
             putf(arg){
                 console.log(arg)
             },
-            puts(offset, length){
-                print("called")
-                const bytes = new Uint8Array(instance.exports.memory.buffer, offset, length);
+            puts(offset){
+                const [start, length] = new Uint32Array(instance.exports.memory.buffer, offset, 2);
+                const bytes = new Uint8Array(instance.exports.memory.buffer, start, length);
                 const string = new TextDecoder("utf8").decode(bytes);
                 console.log(string);
             }
