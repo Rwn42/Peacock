@@ -12,6 +12,7 @@ class Compiler:
         self.exported_procs: list[str] = []
         #contains a map of ids to type for evaluating the type of expressions
         self.id_types = {}
+        self.loops_count = 0
 
         self.comparison_map = {
             ">": "gt_u",
@@ -68,19 +69,32 @@ class Compiler:
             case NodeKind.IF:
                 lhs, _ = self.compile_expression(statement["lhs"])
                 rhs, type_ = self.compile_expression(statement["rhs"])
-                result.append("".join(lhs))
-                result.append("".join(rhs))
+                result.append(" ".join(lhs))
+                result.append(" ".join(rhs))
                 result.append(f"{self.wasm_type(type_)}.{self.comparison_map[statement['comparison']]}")
                 result.append("(if")
                 result.append("(then")
                 for s in statement["body"]:
-                    result.append("".join(self.compile_statement(s)))
+                    result.append(" ".join(self.compile_statement(s)))
                 result.append(")")
                 if statement["else"]:
                     result.append("(else")
                     for s in statement["else"]:
                         result.append("".join(self.compile_statement(s)))
                     result.append(")")
+                result.append(")")
+            case NodeKind.WHILE:
+                result.append(f"(loop $l_{self.loops_count}")
+                cur_loop = self.loops_count
+                self.loops_count += 1
+                for s in statement["body"]:
+                    result.append(" ".join(self.compile_statement(s)))
+                lhs, _ = self.compile_expression(statement["lhs"])
+                rhs, type_ = self.compile_expression(statement["rhs"])
+                result.append(" ".join(lhs))
+                result.append(" ".join(rhs))
+                result.append(f"{self.wasm_type(type_)}.{self.comparison_map[statement['comparison']]}")
+                result.append(f"br_if $l_{cur_loop}")
                 result.append(")")
             case NodeKind.EXPR:
                 expr, _ = self.compile_expression(statement["body"])

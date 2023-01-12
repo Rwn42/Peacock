@@ -1,5 +1,10 @@
 extern puts(s string)
+extern puti(i int)
 
 pub proc main() do
-    puts("Hello, World")
+    x: int = 0
+    while x <= 10 do
+        puti(x)
+        x = x 1 +
+    end
 end
