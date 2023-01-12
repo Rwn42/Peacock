@@ -1,7 +1,5 @@
 # Peacock
 Language that compiles to web-assembly. served as a learning experience to learn about wasm/wat.
-**Note: Documentation is currently removed because so many breaking changes its not worth even including.**
-Refer to previous commits for older working versions of the peacock compiler.
 
 ## CLI
 ```sh
@@ -19,14 +17,15 @@ python main.py com mycode.pk > output.wat
 ```
 
 ## Goals
-- [ ] Improve on syntax choices
+- [x] Improve on syntax choices
 - [ ] More compile time checks
 - [ ] better linear memory behaviour
 - [ ] compile to my own intermediate representation then go to wasm
 - [ ] improve on environment
 - [ ] allow for including other files
+- [ ] move extern defintions into a standard library
 - [ ] support for function pointers as wasm supports them
-- [ ] first class support for strings
+- [x] first class support for strings (no string lib yet)
 - [ ] dynamic memory allocation
 - [ ] try a WASI target
 - [ ] macros maybe (if they seem useful)
@@ -35,3 +34,76 @@ python main.py com mycode.pk > output.wat
 
 Some/Most of these I dont expect to accomplish they just serve as reminders for things I may want to try.
 
+## Overview
+
+### Hello World
+```ruby
+extern puts(s string)
+
+pub proc main() do
+    puts("Hello, World")
+end
+```
+### Expressions
+the simplest expressions in peacock are written in reverse-polish notation.
+expressions terminate on semicolon or newline
+```ruby
+#not allowed
+1 + 3
+#allowed
+1 3 +
+```
+
+### Comparison / If
+```ruby
+if 3 2 + == 4 1 + do
+    ...
+else
+    ...
+end
+```
+
+### While Loops
+Currently Not Implemented
+
+### Variables
+```ruby
+#one way
+x: int
+x = 12
+
+#another way
+x: int = 10 2 +
+```
+
+### Types
+```ruby
+#the 4 basic data types include.
+int
+float
+bool
+string
+^<type> #the ^ is used to denote a pointer
+```
+
+### Procedures
+```ruby
+#local to the wasm module
+proc add(x int, y int) int do
+    return x y +
+end
+
+#accesible by javascript
+pub proc add(x int, y int) int do
+    return x y +
+end
+```
+
+### Using External Functions
+To use functions from javascript in peacock use the following
+```ruby
+extern add(x int, y int) int
+```
+
+### Memory
+Not Yet Implemented

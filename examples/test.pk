@@ -1,11 +1,5 @@
 extern puts(s string)
 
 pub proc main() do
-    x: string = "Hello, World"
-    y: string = "No No No"
-    if 2 == 4 do
-        puts(x)
-    else
-        puts(y)
-    end
+    puts("Hello, World")
 end
