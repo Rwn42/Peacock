@@ -22,8 +22,8 @@ python main.py com mycode.pk > output.wat
 - [ ] better linear memory behaviour
 - [ ] compile to my own intermediate representation then go to wasm
 - [ ] improve on environment
-- [ ] allow for including other files
-- [ ] move extern defintions into a standard library
+- [x] allow for including other files
+- [x] move extern defintions into a standard library
 - [ ] support for function pointers as wasm supports them
 - [x] first class support for strings (no string lib yet)
 - [ ] dynamic memory allocation
@@ -128,4 +128,12 @@ proc main() do
     puti (x 12 + !)
 
 end
+```
+
+### Libraries
+Peacock has C-style include where the code is simply
+shot into the ast when the import statement is encountered.
+
+```ruby
+import "somelibrary.pk"
 ```
