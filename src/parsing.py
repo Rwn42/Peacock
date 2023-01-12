@@ -13,13 +13,13 @@ Statement = Union["NodeIf", "NodeReturn", "NodeWhile", "NodeDecl", "NodeAssignme
 
 FuncParams =  list[NameTypePair]
 
-NodeExtern = TypedDict('NodeExtern', {'name': str, 'params': FuncParams, 'type_': str,})
-NodeFunc = TypedDict('NodeFunc', {'name': str, 'params': FuncParams, 'type_': str, "body": list[Statement], "pub": bool})
-NodeIf = TypedDict("NodeIf", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement]})
-NodeWhile = TypedDict("NodeWhile", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement]})
-NodeDecl = TypedDict("NodeDecl", {"id": str, "type_": str, "body": Optional[ExprFull]})
-NodeAssignment = TypedDict("NodeDecl", {"id": str, "body": ExprFull})
-NodeReturn = TypedDict("NodeReturn", {"body": ExprFull})
+NodeExtern = TypedDict('NodeExtern', {'name': str, 'params': FuncParams, 'type_': str, "kind":str})
+NodeFunc = TypedDict('NodeFunc', {'name': str, 'params': FuncParams, 'type_': str, "body": list[Statement], "pub": bool, "kind":str})
+NodeIf = TypedDict("NodeIf", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement], "kind":str})
+NodeWhile = TypedDict("NodeWhile", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement], "kind":str})
+NodeDecl = TypedDict("NodeDecl", {"id": str, "type_": str, "body": Optional[ExprFull], "kind":str})
+NodeAssignment = TypedDict("NodeDecl", {"id": str, "body": ExprFull, "kind":str})
+NodeReturn = TypedDict("NodeReturn", {"body": ExprFull, "kind":str})
 AST = list[Union[Statement, "NodeExtern", "NodeFunc"]]
 
 
@@ -52,7 +52,7 @@ class Parser:
                     return_type = None
                     if self.lexer.peek_next_token().kind in Parser.type_tokens:
                         return_type = self.parse_type()
-                    node:NodeExtern = {"name": name, "params": params, "type_": return_type}
+                    node:NodeExtern = {"name": name, "params": params, "type_": return_type, "kind":"extern"}
                     ast.append(node)
                 case TokenKind.PROC:
                     name = self.expect(TokenKind.IDENTIFIER, False).value
@@ -63,7 +63,7 @@ class Parser:
                     self.expect(TokenKind.DO)
                     body = self.parse_statements_until()
                     self.expect(TokenKind.END)
-                    node:NodeFunc = {"name": name, "params": params, "type_": return_type, "pub": self.next_proc_pub, "body":body}
+                    node:NodeFunc = {"name": name, "params": params, "type_": return_type, "pub": self.next_proc_pub, "body":body, "kind":"func"}
                     if self.next_proc_pub:
                         self.next_proc_pub = False
                     ast.append(node)
@@ -79,14 +79,61 @@ class Parser:
     
     #returns statements until a desired token
     def parse_statements_until(self, until: list[TokenKind]=[TokenKind.END]) -> list[Statement]:
+        result: list[Statement] = []
         while self.lexer.peek_next_token().kind not in until:
             token = self.lexer.next()
-            result: list[Statement]
+            
             match token.kind:
+                case TokenKind.IF | TokenKind.WHILE:
+                    lhs = self.parse_expr_until(Parser.comparison_tokens)
+                    comparison = self.lexer.next().value
+                    rhs = self.parse_expr_until([TokenKind.DO])
+                    _ = self.lexer.next()
+                    body = self.parse_statements_until()
+                    _ = self.lexer.next()
+                    if token.kind == TokenKind.IF:
+                        node: NodeIf = {"lhs": lhs, "rhs": rhs, "comparison": comparison, "body": body, "kind":"if"}
+                        result.append(node)
+                    else:
+                        node: NodeWhile = {"lhs": lhs, "rhs": rhs, "comparison": comparison, "body": body, "kind":"while"}
+                        result.append(node)
+                case TokenKind.RETURN:
+                    node: NodeReturn = {"body": self.parse_expr_until(), "kind":"return"}
+                    result.append(node)
+        return result
     
     #parses an expression until a desired token is reached 
-    def parse_expr_until(self, until: list[Tokenkind]=[TokenKind.NEWLINE, TokenKind.SEMICOLON]) -> ExprFull:
-        pass
+    def parse_expr_until(self, until: list[TokenKind]=[TokenKind.NEWLINE, TokenKind.SEMICOLON]) -> ExprFull:
+        result: ExprFull = []
+        while self.lexer.peek_next_token().kind not in until:
+            token = self.lexer.next()
+            if token.kind not in Parser.expression_tokens:
+                eprint(f"Unexpected Token In Expression {token}")
+            match token.kind:
+                case TokenKind.LITERAL_INT:
+                    result.append(NameTypePair(token.value, "int"))
+                case TokenKind.LITERAL_FLOAT:
+                    result.append(NameTypePair(token.value, "float"))
+                case TokenKind.LITERAL_STRING:
+                    result.append(NameTypePair(token.value, "string"))
+                case TokenKind.LITERAL_BOOL:
+                    result.append(NameTypePair(token.value, "bool"))
+                case TokenKind.IDENTIFIER:
+                    if self.lexer.peek_next_token().kind == TokenKind.LPAREN:
+                        _ = self.lexer.next()
+                        name = token.value
+                        args = []
+                        while True:
+                            args.append(self.parse_expr_until([TokenKind.COMMA, TokenKind.RPAREN]))
+                            if self.lexer.peek_next_token().kind == TokenKind.RPAREN: break
+                            _ = self.lexer.next()
+                        _ = self.lexer.next()
+                        result.append(FunctionCall(name, args))
+                    else:        
+                        result.append(token.value)
+                case _:
+                    result.append(token.value)
+        return result
                 
 
     #returns procedure parameters for use in extern/proc defintions (not func call arguments)

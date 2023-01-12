@@ -1,7 +1,8 @@
 import sys
 from lexer import *
 from compiler import *
-from parsing import Parser
+from parsing import *
+from pprint import PrettyPrinter
 
 def print_lexer_output(l: Lexer):
     t = l.next()
@@ -12,7 +13,8 @@ def print_lexer_output(l: Lexer):
         t = l.next()
 
 def print_parer_output(p: Parser):
-    print(p.parse())
+    pp = PrettyPrinter(sort_dicts=False)
+    pp.pprint(p.parse())
 
 def main():
     if len(sys.argv) < 3:

@@ -1,19 +1,17 @@
-extern puts(x ^int, y int)
+extern puts(x ^int, y int) ^int
 
 proc main() do
-    if 2 == 2 do
-        return 4 2 +
+    if 2 == 7 3 + do
+        return seven(28)
     end
-    my_var: ^int = 10
-    my_var = 100
 end
 
-my_var: String = "Hello, World!"
-#idea 3
-similiar to two except my_var would contain a pointer to linear memory that holds
-the string length and after it holds the string itself.
+# my_var: String = "Hello, World!"
+# #idea 3
+# similiar to two except my_var would contain a pointer to linear memory that holds
+# the string length and after it holds the string itself.
 
-since we know this stuff at comptime when we create our data section it would look as follows
-(data (i32.const 2) "hi" (i32.const 3) "hey")
+# since we know this stuff at comptime when we create our data section it would look as follows
+# (data (i32.const 2) "hi" (i32.const 3) "hey")
 
-therefore String is really just an int^ or i32 instead of some sort of structure type
+# therefore String is really just an int^ or i32 instead of some sort of structure type

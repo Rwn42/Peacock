@@ -158,31 +158,31 @@ class Lexer:
             case "=":
                 if self.__peek_char() == None: eprint( f"cannot end file on {first_character}")
                 if self.__peek_char() == "=":
-                    self.__consume()
+                    token.value += self.__char()
                     token.kind = TokenKind.DOUBLE_EQUAL
                 else: token.kind = TokenKind.SINGLE_EQUAL
             
             case ">":
                 if self.__peek_char() == None: eprint( f"cannot end file on {first_character}")
                 if self.__peek_char() == "=":
-                    self.__consume()
+                    token.value += self.__char()
                     token.kind = TokenKind.GREATER_THAN_EQUAL
                 else: token.kind = TokenKind.GREATER_THAN
 
             case "<":
                 if self.__peek_char() == None: eprint( f"cannot end file on {first_character}")
                 if self.__peek_char() == "=":
-                    self.__consume()
+                    token.value += self.__char()
                     token.kind = TokenKind.LESS_THAN_EQUAL
                 elif self.__peek_char() == "-":
-                    self.__consume()
+                    token.value += self.__char()
                     token.kind = TokenKind.SLIM_ARROW
                 else: token.kind = TokenKind.LESS_THAN
             
             case "!":
                 if self.__peek_char() == None: eprint( f"cannot end file on {first_character}")
                 if self.__peek_char() == "=":
-                    self.__consume()
+                    token.value += self.__char()
                     token.kind = TokenKind.NOT_EQUAL
                 else: token.kind = TokenKind.EXCLAMATION_MARK
             #this would be a keyword, identifier or an integer/float
