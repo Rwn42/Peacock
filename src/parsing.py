@@ -1,7 +1,16 @@
 from typing import TypedDict, NamedTuple, Union, Optional
-
+from enum import Enum, auto
 from lexer import *
 from util import eprint
+
+class NodeKind(Enum):
+    EXTERN = auto(),
+    PROC = auto(),
+    IF = auto(),
+    WHILE = auto(),
+    DECL = auto(),
+    ASSIGN = auto(),
+    RETURN = auto(),
 
 NameTypePair = NamedTuple("NameTypePair", name=str, type_=str)
 FunctionCall = NamedTuple("FunctionCall", name=str, args=list["ExprFull"])
@@ -13,13 +22,13 @@ Statement = Union["NodeIf", "NodeReturn", "NodeWhile", "NodeDecl", "NodeAssignme
 
 FuncParams =  list[NameTypePair]
 
-NodeExtern = TypedDict('NodeExtern', {'name': str, 'params': FuncParams, 'type_': str, "kind":str})
-NodeFunc = TypedDict('NodeFunc', {'name': str, 'params': FuncParams, 'type_': str, "body": list[Statement], "pub": bool, "kind":str})
+NodeExtern = TypedDict('NodeExtern', {'name': str, 'params': FuncParams, 'type_': str, "kind":NodeKind})
+NodeFunc = TypedDict('NodeFunc', {'name': str, 'params': FuncParams, 'type_': str, "body": list[Statement], "pub": bool, "kind":NodeKind})
 NodeIf = TypedDict("NodeIf", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement], "kind":str})
-NodeWhile = TypedDict("NodeWhile", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement], "kind":str})
-NodeDecl = TypedDict("NodeDecl", {"id": str, "type_": str, "body": Optional[ExprFull], "kind":str})
-NodeAssignment = TypedDict("NodeAssignment", {"id": str, "body": ExprFull, "kind":str})
-NodeReturn = TypedDict("NodeReturn", {"body": ExprFull, "kind":str})
+NodeWhile = TypedDict("NodeWhile", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement], "kind":NodeKind})
+NodeDecl = TypedDict("NodeDecl", {"id": str, "type_": str, "kind":NodeKind})
+NodeAssignment = TypedDict("NodeAssignment", {"id": str, "body": ExprFull, "kind":NodeKind})
+NodeReturn = TypedDict("NodeReturn", {"body": ExprFull, "kind":NodeKind})
 AST = list[Union[Statement, "NodeExtern", "NodeFunc"]]
 
 
@@ -52,7 +61,7 @@ class Parser:
                     return_type = None
                     if self.lexer.peek_next_token().kind in Parser.type_tokens:
                         return_type = self.parse_type()
-                    node:NodeExtern = {"name": name, "params": params, "type_": return_type, "kind":"extern"}
+                    node:NodeExtern = {"name": name, "params": params, "type_": return_type, "kind":NodeKind.EXTERN}
                     ast.append(node)
                 case TokenKind.PROC:
                     name = self.expect(TokenKind.IDENTIFIER, False).value
@@ -63,7 +72,7 @@ class Parser:
                     self.expect(TokenKind.DO)
                     body = self.parse_statements_until()
                     self.expect(TokenKind.END)
-                    node:NodeFunc = {"name": name, "params": params, "type_": return_type, "pub": self.next_proc_pub, "body":body, "kind":"func"}
+                    node:NodeFunc = {"name": name, "params": params, "type_": return_type, "pub": self.next_proc_pub, "body":body, "kind":NodeKind.PROC}
                     if self.next_proc_pub:
                         self.next_proc_pub = False
                     ast.append(node)
@@ -91,27 +100,28 @@ class Parser:
                     body = self.parse_statements_until()
                     _ = self.lexer.next()
                     if token.kind == TokenKind.IF:
-                        node: NodeIf = {"lhs": lhs, "rhs": rhs, "comparison": comparison, "body": body, "kind":"if"}
+                        node: NodeIf = {"lhs": lhs, "rhs": rhs, "comparison": comparison, "body": body, "kind":NodeKind.IF}
                         result.append(node)
                     else:
-                        node: NodeWhile = {"lhs": lhs, "rhs": rhs, "comparison": comparison, "body": body, "kind":"while"}
+                        node: NodeWhile = {"lhs": lhs, "rhs": rhs, "comparison": comparison, "body": body, "kind":NodeKind.WHILE}
                         result.append(node)
                 case TokenKind.RETURN:
-                    node: NodeReturn = {"body": self.parse_expr_until(), "kind":"return"}
+                    node: NodeReturn = {"body": self.parse_expr_until(), "kind":NodeKind.RETURN}
                     result.append(node)
                 case TokenKind.IDENTIFIER:
                     match self.lexer.next().kind:
                         case TokenKind.COLON:
                             type_ = self.parse_type()
-                            body = None
+                            node:NodeDecl = {"kind": NodeKind.DECL, "type_":type_, "id":token.value}
+                            result.append(node)
                             if self.lexer.peek_next_token().kind == TokenKind.SINGLE_EQUAL:
                                 _ = self.lexer.next()
                                 body = self.parse_expr_until()
-                            node:NodeDecl = {"kind": "vardecl", "body": body, "type_":type_, "id":token.value}
-                            result.append(node)
+                                node:NodeAssignment = {"kind": NodeKind.ASSIGN, "id":token.value, "body":body}
+                                result.append(node)
                         case TokenKind.SINGLE_EQUAL:
                             body = self.parse_expr_until()
-                            node:NodeAssignment = {"kind": "varassign", "body": body, "id":token.value}
+                            node:NodeAssignment = {"kind": NodeKind.ASSIGN, "body": body, "id":token.value}
                             result.append(node)
                         case _:
                             eprint(f"Expected : or = after identifier {token}")

@@ -1,11 +1,7 @@
 extern puts(x ^int, y int) ^int
 
-proc main(x ^int) do
-    if 2 == 7 3 + do
-        return seven(28)
-    end
-    gello: ^int = 23 4 +
-    gello = 10
+proc main(x ^int) string do
+    return 23 2 4 main(120) +
 end
 
 # my_var: String = "Hello, World!"

@@ -28,12 +28,11 @@ def main():
 
     parser = Parser(lexer)
 
-    compiler = Compiler()
-
     match subcommand:
         case "lex": print_lexer_output(lexer)
         case "parse": print_parer_output(parser)
-        case "com": compiler.compile(parser.parse())
+        case "com": Compiler(parser.parse()).generate_wasm()
+
         case _:
             eprint(f"Unknown command {subcommand}.")
     
