@@ -1,0 +1,17 @@
+proc new_int_array(length int, default int) ^int do
+    memory x ^int length 4 *
+    i: int = 0
+    while i < length do
+        @x 4 i * + = default
+        i = i 1 +
+    end
+    return x
+end
+
+proc access_arr(arr ^int, location int) int do
+    return arr location 4 * + !
+end
+
+proc change_arr(arr ^int, location int, new int) do
+    @arr 4 location * + = new
+end

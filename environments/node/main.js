@@ -13,7 +13,9 @@ import {readFile} from "node:fs/promises"
                 console.log(arg)
             },
             puts(offset){
-                const [start, length] = new Uint32Array(instance.exports.memory.buffer, offset, 2);
+                const fields = new Uint8Array(instance.exports.memory.buffer, offset, 8);
+                const start = fields.slice(0, 4)[0]
+                const length = fields.slice(4, 8)[0]
                 const bytes = new Uint8Array(instance.exports.memory.buffer, start, length);
                 const string = new TextDecoder("utf8").decode(bytes);
                 console.log(string);

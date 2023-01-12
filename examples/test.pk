@@ -1,26 +1,8 @@
-import "../stdlib/std.pk"
-
-proc new_int_array(length int, default int) ^int do
-    memory x ^int length 4 *
-    i: int = 0
-    while i < length do
-        @x 4 i * + = default
-        i = i 1 +
-    end
-    return x
-end
-
-proc access_arr(arr ^int, location int) int do
-    return arr location 4 * + !
-end
-
-proc change_arr(arr ^int, location int, new int) do
-    @arr 4 location * + = new
-end
+import "../stdlib/io.pk"
+import "../stdlib/array.pk"
 
 pub proc main() do
-    x: ^int = new_int_array(10, 5)
+    x: ^int = new_int_array(5, 20)
     puti(access_arr(x, 0))
-    change_arr(x, 0, 10)
-    puti(access_arr(x, 0))
+    puts("hello, world!")
 end

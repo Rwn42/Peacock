@@ -26,7 +26,7 @@ python main.py com mycode.pk > output.wat
 - [x] move extern defintions into a standard library
 - [ ] support for function pointers as wasm supports them
 - [x] first class support for strings (no string lib yet)
-- [ ] dynamic memory allocation
+- [x] dynamic memory allocation
 - [ ] try a WASI target
 - [ ] macros maybe (if they seem useful)
 - [ ] rewrite the compiler in a high performance language
