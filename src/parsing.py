@@ -18,7 +18,7 @@ NodeFunc = TypedDict('NodeFunc', {'name': str, 'params': FuncParams, 'type_': st
 NodeIf = TypedDict("NodeIf", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement], "kind":str})
 NodeWhile = TypedDict("NodeWhile", {"lhs": ExprFull, "rhs": ExprFull, "comparison": str, "body": list[Statement], "kind":str})
 NodeDecl = TypedDict("NodeDecl", {"id": str, "type_": str, "body": Optional[ExprFull], "kind":str})
-NodeAssignment = TypedDict("NodeDecl", {"id": str, "body": ExprFull, "kind":str})
+NodeAssignment = TypedDict("NodeAssignment", {"id": str, "body": ExprFull, "kind":str})
 NodeReturn = TypedDict("NodeReturn", {"body": ExprFull, "kind":str})
 AST = list[Union[Statement, "NodeExtern", "NodeFunc"]]
 
@@ -82,7 +82,6 @@ class Parser:
         result: list[Statement] = []
         while self.lexer.peek_next_token().kind not in until:
             token = self.lexer.next()
-            
             match token.kind:
                 case TokenKind.IF | TokenKind.WHILE:
                     lhs = self.parse_expr_until(Parser.comparison_tokens)
@@ -100,6 +99,22 @@ class Parser:
                 case TokenKind.RETURN:
                     node: NodeReturn = {"body": self.parse_expr_until(), "kind":"return"}
                     result.append(node)
+                case TokenKind.IDENTIFIER:
+                    match self.lexer.next().kind:
+                        case TokenKind.COLON:
+                            type_ = self.parse_type()
+                            body = None
+                            if self.lexer.peek_next_token().kind == TokenKind.SINGLE_EQUAL:
+                                _ = self.lexer.next()
+                                body = self.parse_expr_until()
+                            node:NodeDecl = {"kind": "vardecl", "body": body, "type_":type_, "id":token.value}
+                            result.append(node)
+                        case TokenKind.SINGLE_EQUAL:
+                            body = self.parse_expr_until()
+                            node:NodeAssignment = {"kind": "varassign", "body": body, "id":token.value}
+                            result.append(node)
+                        case _:
+                            eprint(f"Expected : or = after identifier {token}")
         return result
     
     #parses an expression until a desired token is reached 
@@ -157,6 +172,8 @@ class Parser:
             case TokenKind.HAT:
                 rest = self.expect(TokenKind.IDENTIFIER, False).value
                 return initial.value+rest
+            case _:
+                eprint(f"Unexpected Token {initial} Expected Type.")
 
     #checks if the next token matches what is expected if consume is true does not return the token
     def expect(self, expect: TokenKind, consume:bool = True) -> Optional[Token]:
