@@ -1,17 +1,21 @@
 extern puts(s string)
 extern puti(i int)
 
-pub proc main() do
-    #allocate 4 integers or 16 bytes
-    memory x ^int 16
-    @x = 10
-    @x 4 + = 11
-    @x 8 + = 12
-    @x 12 + = 13
-    #this will print the numbers out to the console
-    puti(x !)
-    puti(x 4 + !)
-    puti(x 8 + !)
-    puti (x 12 + !)
+proc new_int_array(length int, default int) ^int do
+    memory x ^int length 4 *
+    i: int = 0
+    while i < length do
+        @x 4 i * + = default
+        i = i 1 +
+    end
+    return x
+end
 
+proc access_arr(arr ^int, location int) int do
+    return arr location 4 * + !
+end
+
+pub proc main() do
+    x: ^int = new_int_array(10, 5)
+    puti(access_arr(x, 1))
 end

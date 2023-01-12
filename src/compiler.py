@@ -42,6 +42,7 @@ class Compiler:
                         self.exported_procs.append(f'(export "main" (func ${node["name"]}))')
                     code.append(f"(func ${node['name']}")
                     for p in node["params"]:
+                        self.id_types[p.name] = p.type_
                         code.append(f"  (param ${p.name} {self.wasm_type(p.type_)})")
                     if node["type_"]:
                         code.append(f"  (result {self.wasm_type(node['type_'])})")
@@ -55,6 +56,10 @@ class Compiler:
                         code.extend(self.compile_statement(n))
                     code.append(")")
                     self.procedure_code.append("\n".join(code))
+                    #removing declared identifiers
+                    for n in node["body"]:
+                        if n["kind"] == NodeKind.DECL or n["kind"] == NodeKind.MEMDECL:
+                            del self.id_types[n["id"]]
 
     def compile_statement(self, statement: Statement) -> list[str]:
         result = []
@@ -179,7 +184,8 @@ class Compiler:
                     case "!":
                         result.append(f"{self.wasm_type(type_)}.load")
                     case _:
-                        type_ = self.id_types[expr_node]
+                        if expr_node not in self.id_types:
+                            eprint(f"Undeclared Identifier {expr_node}")
                         result.append(f"local.get ${expr_node}")
                     
         return (result, type_)
