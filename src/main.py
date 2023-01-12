@@ -12,7 +12,7 @@ def print_lexer_output(l: Lexer):
         t = l.next()
 
 def print_parer_output(p: Parser):
-    print(p.parse_until())
+    print(p.parse())
 
 def main():
     if len(sys.argv) < 3:
@@ -31,7 +31,7 @@ def main():
     match subcommand:
         case "lex": print_lexer_output(lexer)
         case "parse": print_parer_output(parser)
-        case "com": compiler.compile(parser.parse_until())
+        case "com": compiler.compile(parser.parse())
         case _:
             eprint(f"Unknown command {subcommand}.")
     
