@@ -1,5 +1,6 @@
 # Peacock
-Language that compiles to web-assembly. served as a learning experience to learn about wasm/wat.
+Language that compiles to web-assembly. served as a learning experience to learn about wasm/wat. The project is mainly complete in its current form I may revisit a wasm compiled
+language in the future.
 
 ## CLI
 ```sh
@@ -28,7 +29,6 @@ python main.py com mycode.pk > output.wat
 - [x] first class support for strings (no string lib yet)
 - [x] dynamic memory allocation
 - [ ] try a WASI target
-- [ ] macros maybe (if they seem useful)
 - [ ] rewrite the compiler in a high performance language
 - [ ] compile straight to web assembly not wat
 
