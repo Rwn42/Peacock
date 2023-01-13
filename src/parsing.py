@@ -14,6 +14,7 @@ class NodeKind(Enum):
     RETURN = auto(),
     EXPR = auto(),
     MEMDECL = auto(),
+    CONSTDECL = auto(),
     MEMLOAD = auto(),
     MEMSTORE = auto(),
 
@@ -36,6 +37,7 @@ NodeAssignment = TypedDict("NodeAssignment", {"id": str, "body": ExprFull, "kind
 NodeReturn = TypedDict("NodeReturn", {"body": ExprFull, "kind":NodeKind})
 NodeExpr = TypedDict("NodeExpr", {"body": ExprFull, "kind":NodeKind})
 NodeMemDecl = TypedDict("NodeMemDecl", {"id": str, "type_": str, "size":ExprFull, "kind":NodeKind})
+NodeConstDecl = TypedDict("NodeDecl", {"id": str, "type_": str, "kind":NodeKind, "value": str})
 NodeMemStore = TypedDict("NodeMemStore", {"id": str, "offset": ExprFull, "body":ExprFull, "kind":NodeKind})
 NodeMemLoad = TypedDict("NodeMemLoad", {"id": str, "offset": str, "body":ExprFull, "kind":NodeKind})
 
@@ -100,6 +102,13 @@ class Parser:
                     f.close()
                     p = Parser(l)
                     ast.extend(p.parse())
+                case TokenKind.IDENTIFIER:
+                    self.expect(TokenKind.COLON)
+                    type_ = self.parse_type()
+                    self.expect(TokenKind.COLON)
+                    value = self.lexer.next().value
+                    node:NodeConstDecl = {"id": token.value, "type_": type_, "kind":NodeKind.CONSTDECL, "value": value}
+                    ast.append(node)
                 case TokenKind.NEWLINE: pass
                 case TokenKind.EOF: return ast
                 case _:

@@ -1,8 +1,0 @@
-import "../stdlib/io.pk"
-import "../stdlib/array.pk"
-
-pub proc main() do
-    x: ^int = new_int_array(5, 20)
-    puti(access_arr(x, 0))
-    puts("hello, world!")
-end

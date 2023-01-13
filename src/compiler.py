@@ -10,6 +10,7 @@ class Compiler:
         self.extern_signatures: list[str] = []
         self.procedure_code: list[str] = []
         self.exported_procs: list[str] = []
+        self.consts: list[str] = []
         #contains a map of ids to type for evaluating the type of expressions
         self.id_types = {}
         self.loops_count = 0
@@ -60,6 +61,9 @@ class Compiler:
                     for n in node["body"]:
                         if n["kind"] == NodeKind.DECL or n["kind"] == NodeKind.MEMDECL:
                             del self.id_types[n["id"]]
+                case NodeKind.CONSTDECL:
+                    self.consts.append(f"(global ${node['id']} {self.wasm_type(node['type_'])} ({self.wasm_type(node['type_'])}.const {node['value']}))")
+                    self.id_types[node["id"]] = f"const{node['type_']}"
 
     def compile_statement(self, statement: Statement) -> list[str]:
         result = []
@@ -186,13 +190,17 @@ class Compiler:
                     case _:
                         if expr_node not in self.id_types:
                             eprint(f"Undeclared Identifier {expr_node}")
-                        result.append(f"local.get ${expr_node}")
+                        if self.id_types[expr_node].startswith("const"):
+                            result.append(f"global.get ${expr_node}")
+                        else:
+                            result.append(f"local.get ${expr_node}")
                     
         return (result, type_)
     def wasm_type(self, type_: str) -> str:
         if type_ == "float": return "f32"
         else: return "i32"
-    
+
+    #turns the current state of the compiler into a string representation of the completed wat file 
     def save_wasm(self) -> str:
         final = ""
         final += "(module\n"
@@ -201,6 +209,8 @@ class Compiler:
         final += '(export "memory" (memory 0))\n'
         for sig in self.exported_procs: final += f"{sig}\n"
         final += f"(global $mem_head (mut i32) (i32.const {self.memory_written}))\n"
+        for const in self.consts:
+            final += f"{const}\n"
         final += f"(data (i32.const 4) {' '.join(self.data_section)})\n"
         for func in self.procedure_code:
             final += func

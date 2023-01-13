@@ -81,6 +81,11 @@ x = 12
 x: int = 10 2 +
 ```
 
+### Constants
+```ruby
+x: int : 10
+```
+
 ### Types
 ```ruby
 #the 4 basic data types include.

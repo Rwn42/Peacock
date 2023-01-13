@@ -3,3 +3,4 @@ output.wasm
 output.wat
 notes.txt
 mypy
+build.sh
