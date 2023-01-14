@@ -64,7 +64,8 @@ class Compiler:
                 case NodeKind.CONSTDECL:
                     self.consts.append(f"(global ${node['id']} {self.wasm_type(node['type_'])} ({self.wasm_type(node['type_'])}.const {node['value']}))")
                     self.id_types[node["id"]] = f"const{node['type_']}"
-
+    
+    #compiles a statement to list of web assembly strings
     def compile_statement(self, statement: Statement) -> list[str]:
         result = []
         match statement["kind"]:
@@ -196,6 +197,8 @@ class Compiler:
                             result.append(f"local.get ${expr_node}")
                     
         return (result, type_)
+
+    #returns a wasm string type such as i32 from a peacock language type string
     def wasm_type(self, type_: str) -> str:
         if type_ == "float": return "f32"
         else: return "i32"
