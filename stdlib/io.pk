@@ -1,3 +1,0 @@
-extern puts(s string)
-extern puti(i int)
-extern putf(f float)

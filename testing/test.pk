@@ -1,0 +1,2 @@
+"A string" 123 123.456 #a comment
+true false next_is_keyword if

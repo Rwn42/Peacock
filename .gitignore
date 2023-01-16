@@ -1,6 +1,1 @@
-__pycache__
-output.wasm
-output.wat
-notes.txt
-mypy
-build.sh
+*.wasm
