@@ -1,4 +1,5 @@
 import { argv, exit } from "process"
+import {Lexer, TokenType, Token} from "./lexer.js"
 
 //config interface for cli
 interface Config{
@@ -21,7 +22,7 @@ const print_error = function(msg: string) {
     exit(1)
 }
 
-const main = function(){
+const main = async function(){
     if(argv.length < 3){
         print_error("ERROR: No Input File Specified");
     }
@@ -50,6 +51,12 @@ const main = function(){
     }
 
     if(config.input_file == "--help") print_help();
+
+    const filestring = await Bun.file(config.input_file).text();
+    const lexer = new Lexer(filestring, config.input_file);
+    console.log(lexer.next())
+    console.log(lexer.next())
+    console.log(lexer.next())
 }
 
 const print_help = function(){
@@ -67,7 +74,3 @@ const print_help = function(){
 }
 
 main();
-
-
-
-
