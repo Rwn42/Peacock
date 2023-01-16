@@ -15,14 +15,14 @@ class NodeKind(Enum):
     EXPR = auto(),
     MEMDECL = auto(),
     CONSTDECL = auto(),
-    MEMLOAD = auto(),
     MEMSTORE = auto(),
 
 NameTypePair = NamedTuple("NameTypePair", name=str, type_=str)
 FunctionCall = NamedTuple("FunctionCall", name=str, args=list["ExprFull"])
+MemLoad = NamedTuple("MemLoad", id=str, offset="ExprFull", type_=str)
 
 #a value literal would contain a type so strings can be decerned from identifiers.
-ExprNode = Union[NameTypePair, str, FunctionCall]
+ExprNode = Union[NameTypePair, str, FunctionCall, MemLoad]
 ExprFull = list[ExprNode]
 Statement = Union["NodeIf", "NodeReturn", "NodeWhile", "NodeDecl", "NodeAssignment", "NodeExpr", "NodeMemDecl", "NodeMemStore", "NodeMemLoad"]
 
@@ -39,7 +39,6 @@ NodeExpr = TypedDict("NodeExpr", {"body": ExprFull, "kind":NodeKind})
 NodeMemDecl = TypedDict("NodeMemDecl", {"id": str, "type_": str, "size":ExprFull, "kind":NodeKind})
 NodeConstDecl = TypedDict("NodeDecl", {"id": str, "type_": str, "kind":NodeKind, "value": str})
 NodeMemStore = TypedDict("NodeMemStore", {"id": str, "offset": ExprFull, "body":ExprFull, "kind":NodeKind})
-NodeMemLoad = TypedDict("NodeMemLoad", {"id": str, "offset": str, "body":ExprFull, "kind":NodeKind})
 
 AST = list[Union[Statement, "NodeExtern", "NodeFunc"]]
 
@@ -60,6 +59,7 @@ class Parser:
     def __init__(self, lexer: Lexer):
         self.lexer = lexer
         self.next_proc_pub = False
+        self.memory_identifier_types = {}
 
     #parses top level code and returns the ast representing the program
     def parse(self) -> AST:
@@ -141,7 +141,9 @@ class Parser:
                     result.append(node)
                 case TokenKind.MEMORY:
                     id_ = self.expect(TokenKind.IDENTIFIER, False).value
-                    node: NodeMemDecl = {"id":id_, "type_": self.parse_type(), "size":self.parse_expr_until(), "kind":NodeKind.MEMDECL}
+                    type_ = self.parse_type()
+                    node: NodeMemDecl = {"id":id_, "type_": type_, "size":self.parse_expr_until(), "kind":NodeKind.MEMDECL}
+                    self.memory_identifier_types[id_] = type_
                     result.append(node)
                 case TokenKind.AT:
                         id_ = self.expect(TokenKind.IDENTIFIER, False).value
@@ -208,6 +210,19 @@ class Parser:
                         result.append(FunctionCall(name, args))
                     else:        
                         result.append(token.value)
+                case TokenKind.EXCLAMATION_MARK:
+                    id_ = self.expect(TokenKind.IDENTIFIER, False).value
+                    if self.lexer.peek_next_token().kind == TokenKind.DOT:
+                        _ = self.lexer.next()
+                        if self.lexer.peek_next_token().kind == TokenKind.LPAREN:
+                            _ = self.lexer.next()
+                            result.append(MemLoad(id_, self.parse_expr_until([TokenKind.RPAREN]), self.memory_identifier_types[id_],))
+                            _ = self.lexer.next()
+                        else:
+                            result.append(MemLoad(id_, [NameTypePair(self.lexer.next().value, "int")], self.memory_identifier_types[id_]))
+                    else:
+                        result.append(MemLoad(id_, None, self.memory_identifier_types[id_]))    
+
                 case _:
                     result.append(token.value)
         return result

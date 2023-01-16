@@ -127,10 +127,10 @@ proc main() do
     @x 8 + = 12
     @x 12 + = 13
     #this will print the numbers out to the console
-    puti(x !)
-    puti(x 4 + !)
-    puti(x 8 + !)
-    puti (x 12 + !)
+    puti(!x)
+    puti(!x.1 )
+    puti(!x.2)
+    puti(!x.3)
 
 end
 ```

@@ -176,6 +176,16 @@ class Compiler:
                     eprint(f"Undeclared Identifier {expr_node.name}")
                 result.append(f" call ${expr_node.name} ")
                 type_ = self.id_types[expr_node.name]
+            elif isinstance(expr_node, MemLoad):
+                if expr_node[1]:
+                    expr, _ = self.compile_expression(expr_node[1]) 
+                    result.append("".join(expr))
+                    result.append("i32.const 4")
+                    result.append("i32.mul")
+                result.append(f"local.get ${expr_node[0]}")
+                if expr_node[1]:
+                    result.append("i32.add")   
+                result.append(f"{self.wasm_type(expr_node[2])}.load")
             else:
                 match expr_node:
                     case "+":
@@ -186,8 +196,6 @@ class Compiler:
                         result.append(f"{self.wasm_type(type_)}.mul")
                     case "/":
                         result.append(f"{self.wasm_type(type_)}.div")
-                    case "!":
-                        result.append(f"{self.wasm_type(type_)}.load")
                     case _:
                         if expr_node not in self.id_types:
                             eprint(f"Undeclared Identifier {expr_node}")

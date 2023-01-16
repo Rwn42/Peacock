@@ -9,7 +9,7 @@ proc new_int_array(length int, default int) ^int do
 end
 
 proc access_arr(arr ^int, location int) int do
-    return arr location 4 * + !
+    return !arr.location
 end
 
 proc change_arr(arr ^int, location int, new int) do
