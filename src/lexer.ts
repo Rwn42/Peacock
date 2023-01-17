@@ -20,6 +20,8 @@ export enum TokenType{
     Rparen,
     Semicolon,
     Colon,
+    Comma,
+    Dot,
     Hat,
     If,
     Do,
@@ -171,6 +173,8 @@ export class Lexer{
             case ":": token.kind = TokenType.Colon; break;
             case "^": token.kind = TokenType.Hat; break;
             case "+": token.kind = TokenType.Plus; break;
+            case ".": token.kind = TokenType.Dot; break;
+            case ",": token.kind = TokenType.Comma; break;
             case "-":{
                 if(!this.peek()){token.kind = TokenType.Dash; break}
                 if(/[0-9]/.test(this.peek() as string)){

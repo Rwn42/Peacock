@@ -7,4 +7,6 @@ to try the new bun JavaScript runtime. I still plan on rewriting the compiler in
 - speed
 - negative numbers lexed correctly
 - CLI
+- AST (more thorough leaves less up to the compiler)
+- Linear Memory syntax
 
