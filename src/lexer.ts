@@ -4,6 +4,28 @@ export enum TokenType{
     LiteralBool,
     LiteralString,
     Identifier,
+    Plus,
+    Dash,
+    SlashForward,
+    Asterisk,
+    LessThan,
+    LessThanEqual,
+    GreaterThan,
+    GreaterThanEqual,
+    SingeEqual,
+    DoubleEqual,
+    NotEqual,
+    ExclamationMark,
+    Lparen,
+    Rparen,
+    Semicolon,
+    Colon,
+    Hat,
+    If,
+    Do,
+    While,
+    Proc,
+    End,
     Newline,
     EOF,
 }
@@ -17,7 +39,22 @@ export interface Token{
 
 }
 
+export const token_repr = function(t: Token): string {
+    const type = TokenType[t.kind];
+    let repr = `${t.value} at line: ${t.row+1} col: ${t.col+1}\n`
+    repr += `   The token was parsed as type ${type}`
+    return repr;
+}
+
 type FilterFunction = (x: string) => boolean;
+
+const keywords = new Map<string, TokenType>([
+    ["if", TokenType.If],
+    ["do", TokenType.Do],
+    ["while", TokenType.While],
+    ["end", TokenType.End],
+    ["proc", TokenType.Proc],
+])
 
 
 export class Lexer{
@@ -54,7 +91,7 @@ export class Lexer{
     
     //returns current character but does not advance the lexer
     private peek(): string | null {
-        if(this.pos >= this.filestring.length-1) return null;
+        if(this.pos > this.filestring.length-1) return null;
         return this.filestring[this.pos];
     }
 
@@ -90,6 +127,7 @@ export class Lexer{
 
         if(this.peek()){
             if(this.peek() == "\n"){
+                this.advance();
                 return this.newToken("\n", TokenType.Newline)
             }
         }else{
@@ -111,6 +149,58 @@ export class Lexer{
                 this.get_characters_while((x)=> x != "\n");
                 this.advance()
                 return this.next()
+            case ">": 
+                token.kind = (this.peek() == "=" ? TokenType.LessThanEqual : TokenType.LessThan);
+                token.value += this.char();
+                break;
+            case "<":
+                token.kind = (this.peek() == "=" ? TokenType.GreaterThanEqual : TokenType.GreaterThan);
+                token.value += this.char();
+                break;
+            case "=":
+                token.kind = (this.peek() == "=" ? TokenType.DoubleEqual : TokenType.SingeEqual);
+                token.value += this.char();
+                break;
+            case "!":
+                token.kind = (this.peek() == "=" ? TokenType.NotEqual : TokenType.ExclamationMark);
+                token.value += this.char();
+                break;
+            case "(": token.kind = TokenType.Lparen; break;
+            case ")": token.kind = TokenType.Rparen; break;
+            case ";": token.kind = TokenType.Semicolon; break;
+            case ":": token.kind = TokenType.Colon; break;
+            case "^": token.kind = TokenType.Hat; break;
+            case "+": token.kind = TokenType.Plus; break;
+            case "-":{
+                if(!this.peek()){token.kind = TokenType.Dash; break}
+                if(/[0-9]/.test(this.peek() as string)){
+                    token.value += this.get_characters_while((x)=>/^\d*\.?\d*$/.test(x)).join("");
+                    token.kind = token.value.includes(".") ? TokenType.LiteralFloat : TokenType.LiteralInt;
+                }else{
+                    token.kind = TokenType.Dash;
+                }
+                break;
+            }
+            case "/": token.kind = TokenType.SlashForward; break;
+            case "*": token.kind = TokenType.Asterisk; break;
+            default:
+                //check for integer or float
+                if(/[0-9]/.test(first_character)){
+                    token.value += this.get_characters_while((x)=>/^\d*\.?\d*$/.test(x)).join("")
+                    token.kind = token.value.includes(".") ? TokenType.LiteralFloat : TokenType.LiteralInt;
+                    return token;
+                }
+
+                //if it wasnt that it is a keyword or identifier
+                token.value += this.get_characters_while((x)=>/^[\w-]+$/.test(x)).join("")
+
+                if(token.value == "true" || token.value == "false"){
+                    token.kind = TokenType.LiteralBool;
+                    return token;
+                }
+                
+                token.kind = keywords.get(token.value) ?? TokenType.Identifier;
+
         }
         
         return token;

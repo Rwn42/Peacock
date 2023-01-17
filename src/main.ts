@@ -1,5 +1,5 @@
 import { argv, exit } from "process"
-import {Lexer, TokenType, Token} from "./lexer.js"
+import {Lexer, TokenType, Token, token_repr} from "./lexer.js"
 
 //config interface for cli
 interface Config{
@@ -54,9 +54,13 @@ const main = async function(){
 
     const filestring = await Bun.file(config.input_file).text();
     const lexer = new Lexer(filestring, config.input_file);
-    console.log(lexer.next())
-    console.log(lexer.next())
-    console.log(lexer.next())
+    
+    while(true){
+        const tk = lexer.next();
+        if(tk.kind == TokenType.EOF) break;
+        if(tk.kind == TokenType.Newline) continue;
+        console.log(token_repr(tk));
+    }
 }
 
 const print_help = function(){

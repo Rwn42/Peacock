@@ -1,2 +1,2 @@
-"A string" #could 123 123.456 #a comment
-true false next_is_keyword if
+"a string" 123 12.3 -12.3 -10 hello
+true false proc do while end () ;
