@@ -205,5 +205,17 @@ export class Lexer{
         
         return token;
     }
+
+    //returns the next token but does not advance the lexer
+    peek_next(){
+        const pos = this.pos;
+        const row = this.row;
+        const col = this.col;
+        const result = this.next();
+        this.pos = pos;
+        this.row = row;
+        this.col = col;
+        return result;
+    }
     
 }

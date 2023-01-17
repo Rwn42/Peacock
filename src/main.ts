@@ -1,5 +1,6 @@
 import { argv, exit } from "process"
 import {Lexer, TokenType, Token, token_repr} from "./lexer.js"
+import * as Parsing from "./parser.js"
 
 //config interface for cli
 interface Config{
@@ -29,7 +30,7 @@ const main = async function(){
     const user_arguments = argv.slice(2);
 
     //default configuration options
-    const config: Config = {input_file: user_arguments[0], action: "-c", output_file: "output.bin", target: "pvm"}
+    const config: Config = {input_file: user_arguments[0], action: "-c", output_file: "output", target: "pvm"}
 
 
     //add any specified compiler options
@@ -45,7 +46,7 @@ const main = async function(){
             }
             config.target = user_arguments[i + 1];
             i++;
-        }else if (flag == "-o") config.output_file = user_arguments[++i] || "output.bin";
+        }else if (flag == "-o") config.output_file = user_arguments[++i] || "output";
         else print_error(`ERROR: Unknown compiler option ${flag}`);
         i++;
     }
@@ -54,13 +55,23 @@ const main = async function(){
 
     const filestring = await Bun.file(config.input_file).text();
     const lexer = new Lexer(filestring, config.input_file);
-    
-    while(true){
-        const tk = lexer.next();
-        if(tk.kind == TokenType.EOF) break;
-        if(tk.kind == TokenType.Newline) continue;
-        console.log(token_repr(tk));
+
+    //save lexer output to a file
+    if(config.action == "-l"){
+        let output_content = ""
+        while(true){
+            const tk = lexer.next();
+            if(tk.kind == TokenType.EOF) break;
+            if(tk.kind == TokenType.Newline) continue;
+            output_content += token_repr(tk) + "\n";
+        }
+        await Bun.write(Bun.file(config.output_file + ".txt"), output_content);
+        return;
     }
+
+    const parser = new Parsing.Parser(lexer);
+
+
 }
 
 const print_help = function(){
