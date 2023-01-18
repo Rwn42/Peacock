@@ -69,8 +69,15 @@ const main = async function(){
         return;
     }
 
-    const parser = new Parsing.Parser(lexer);
+    const ast = new Parsing.Parser(lexer).parse();
 
+    //save ast to file
+    if(config.action == "-p"){
+        const ast_str = ast.map(item => JSON.stringify(item, null, 4));
+        await Bun.write(Bun.file(config.output_file + ".json"), ast_str.join(""));
+        return;
+    }
+    
 
 }
 

@@ -1,1 +1,44 @@
-12 2 + hello.hello
+proc main(x: int, y: int) ^int do
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+    if x 3 + == 2 do
+        return 1
+    end
+end

@@ -28,6 +28,8 @@ export enum TokenType{
     While,
     Proc,
     End,
+    Return,
+    Pub,
     Newline,
     EOF,
 }
@@ -56,6 +58,8 @@ const keywords = new Map<string, TokenType>([
     ["while", TokenType.While],
     ["end", TokenType.End],
     ["proc", TokenType.Proc],
+    ["return", TokenType.Return],
+    ["pub", TokenType.Pub],
 ])
 
 
@@ -130,6 +134,8 @@ export class Lexer{
         if(this.peek()){
             if(this.peek() == "\n"){
                 this.advance();
+                this.row += 1;
+                this.col = 0;
                 return this.newToken("\n", TokenType.Newline)
             }
         }else{

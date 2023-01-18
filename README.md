@@ -9,4 +9,5 @@ to try the new bun JavaScript runtime. I still plan on rewriting the compiler in
 - CLI
 - AST (more thorough leaves less up to the compiler)
 - Linear Memory syntax
+- AST output is presented in readable json
 
