@@ -4,95 +4,108 @@ import * as Ast from "./ast.ts"
 
 interface IdentifierInformation{
     type:string,
-    sizeof_type?: number,
+    sizeof_type?: number, //not size of type on stack for pointers but size of pointed to type
 }
-
-/*
-Proposed Linear Memory syntax
-x.z <- this would be a struct load so load type of z
-x.(z) <- this would be an array load so load somehting of type x at offset z
-
-x.z = 10
-*/
-
 /*
 TODO:
-Definition Parser
 Static analysis
+remove declared identifiers after function body is over
+add memory keyword (perhaps static so its exists after function)
+structures, enumerations
 */
-
-
 
 export class Parser{
     lexer: Lexer
     declared_identifiers: Map<string, IdentifierInformation>
+
     static comparison_tokens = [
         TokenType.LessThan, TokenType.GreaterThan,
         TokenType.DoubleEqual, TokenType.NotEqual,
         TokenType.GreaterThanEqual, TokenType.LessThanEqual
     ]
+
     constructor(lexer: Lexer){
         this.lexer = lexer;
         this.declared_identifiers = new Map();
     }
 
+    expect(expectKind: TokenType): Token{
+        const token = this.lexer.next();
+        if(token.kind != expectKind) Parser.unexpected_token(token);
+        return token;
+    }
+
     parse(): Ast.AST{
         const token = this.lexer.next()
         const result: Ast.AST = [];
+
         switch(token.kind){
-            case TokenType.Proc:{
-                const name = this.lexer.next().value;
-                let is_public = false
-                if(this.lexer.peek_next().kind == TokenType.Pub){
-                    this.lexer.next();
-                    is_public = true;
-                }
-                const args = this.parse_params();
-                const return_type = this.lexer.peek_next().kind == TokenType.Do ? undefined : this.parse_type();
-                this.declared_identifiers.set(name, {type: return_type || ""})
-                const body = this.get_statements();
-                result.push({
-                    body: body,
-                    name: name, 
-                    params: args || null, 
-                    return_type: return_type, 
-                    is_public: is_public,
-                    kind: Ast.DefintionType.Procedure,
-                });
-                this.lexer.next();
-            }
+            case TokenType.Pub:
+                result.push(this.parseProcedureDefinition(true)); break;
+            case TokenType.Proc:
+                    result.push(this.parseProcedureDefinition(false)); break;
                
         }
+
         return result;
     }
 
-    private parse_params(): Array<Ast.VariableUsage>{
-        const args: Array<Ast.VariableUsage> = [];
-        if(this.lexer.peek_next().kind != TokenType.Lparen) Parser.unexpected_token(this.lexer.next())
+    /*
+    Top Level Defintion Parsing 
+    */
+
+    parseProcedureDefinition(is_public: boolean): Ast.Procedure{
+
+        if(is_public) this.expect(TokenType.Proc);
+
+        const name = this.expect(TokenType.Identifier).value
+        const args = this.parseParams();
+        const return_type = this.lexer.peek_next().kind == TokenType.Do ? undefined : this.parseType();
         this.lexer.next();
-        if(this.lexer.peek_next().kind != TokenType.Rparen){
-            while(true){
-                const name_tk = this.lexer.next();
-                const name = name_tk.kind == TokenType.Identifier ? name_tk.value : Parser.unexpected_token(name_tk);
-                if(this.lexer.peek_next().kind != TokenType.Colon) Parser.unexpected_token(this.lexer.next())
-                this.lexer.next();
-                const type = this.parse_type()
-                args.push({name:name, type: type})
-                this.declared_identifiers.set(name, {type: type})
-                if(this.lexer.peek_next().kind == TokenType.Rparen) break;
-                this.lexer.next()
-            }
+
+        this.declared_identifiers.set(name, {type: return_type || ""})
+
+        const body = this.parseStatements();
+        this.lexer.next();
+       
+
+        return{
+            body: body,
+            name: name, 
+            params: args || null, 
+            return_type: return_type, 
+            is_public: is_public,
+            kind: Ast.DefintionType.Procedure,
+        };
+        
+    }
+
+    private parseParams(): Array<Ast.NameTypePair>{
+        const args: Array<Ast.NameTypePair> = [];
+
+        this.expect(TokenType.Lparen);
+
+        while(this.lexer.peek_next().kind != TokenType.Rparen){
+            const name = this.expect(TokenType.Identifier).value
+            this.expect(TokenType.Colon)
+            const type = this.parseType()
+
+            args.push({name:name, type: type})
+
+            this.declared_identifiers.set(name, {type: type})
+
+            if(this.lexer.peek_next().kind == TokenType.Rparen) break;
+
+            this.expect(TokenType.Comma);
         }
         this.lexer.next();
         return args;
     }
 
-    private parse_type(): string{
+    private parseType(): string{
         const initial = this.lexer.next();
         if(initial.kind == TokenType.Hat){
-            return initial.value += 
-            this.lexer.peek_next().kind == TokenType.Identifier ? 
-            this.lexer.next().value : Parser.unexpected_token(this.lexer.next());
+            return initial.value += this.expect(TokenType.Identifier).value
         }else if(initial.kind == TokenType.Identifier){
             return initial.value
         }else{
@@ -100,197 +113,198 @@ export class Parser{
         }
     }
 
-    private get_statements(until: Array<TokenType> = [TokenType.End]): Array<Ast.Statement>{
-        const result: Array<Ast.Statement> = [];
-        while(true){
-            if(until.includes(this.lexer.peek_next().kind) || this.lexer.peek_next().kind == TokenType.EOF) return result;
-            const token = this.lexer.next();
-            switch(token.kind){
-                case TokenType.Return:
-                    result.push({body: this.get_expression(), kind: Ast.StatementType.Return}); break;
-                case TokenType.Identifier:
-                    if(this.lexer.peek_next().kind == TokenType.Dot){
-                        this.lexer.next();
-                        const identifier = token.value
-                        if(this.lexer.peek_next().kind == TokenType.Lparen){
-                            this.lexer.next();
-                            const offset = this.get_expression([TokenType.Rparen]);
-                            this.lexer.next();
-                            const info = this.declared_identifiers.get(identifier) ?? Parser.undeclared_identifier(token);
-                            if(this.lexer.next().kind != TokenType.SingeEqual) Parser.unexpected_token(token);
-                            result.push({
-                                kind: Ast.StatementType.MemoryStore,
-                                identifier: identifier,
-                                offset: offset,
-                                type: info.type,
-                                sizeof: 4,
-                                body: this.get_expression(),
-                            });
-                        }else{
-                            const next = this.lexer.next();
-                            if(this.lexer.peek_next().kind != TokenType.SingeEqual) Parser.unexpected_token(this.lexer.next());
-                            this.lexer.next();
-                            const body = this.get_expression();
-                            const info = this.declared_identifiers.get(next.value) ?? Parser.undeclared_identifier(next);
-                            result.push({
-                                kind: Ast.StatementType.MemoryStore,
-                                identifier: identifier,
-                                offset: {body: [{name: next.value, type: "int"}], type:"int"},
-                                type: info.type,
-                                sizeof: info.sizeof_type ?? 4,
-                                body: body,
-                            });
 
-                        }
-                    }else if(this.lexer.peek_next().kind == TokenType.Colon){
-                        this.lexer.next()
-                        const name = token.value;
-                        const type = this.parse_type()
-                        let assignment = undefined;
-                        this.declared_identifiers.set(name, {type: type})
-                        if(this.lexer.peek_next().kind == TokenType.SingeEqual){
-                            this.lexer.next();
-                            assignment = this.get_expression();
-                        }
-                        result.push({name: name, type: type, assignment: assignment, kind: Ast.StatementType.VariableDeclaration});
-                    }else if(this.lexer.peek_next().kind == TokenType.SingeEqual){
-                        const name = token.value;
-                        this.lexer.next();
-                        result.push({name: name,  body: this.get_expression(), kind: Ast.StatementType.VariableAssignment});
+    /*
+    Functions for parsing statements
+    */
+
+    //the consume first is here mainly to clean ip the conditional block code 
+    //so i dont have to consume the do token and can just return the object right away.
+    parseStatements(until = [TokenType.End], consume_first=false): Array<Ast.Statement>{
+        const result: Array<Ast.Statement> = [];
+        if(consume_first) this.lexer.next();
+        while(true){
+            const initial = this.lexer.next();
+            if(until.includes(initial.kind)) return result;
+            switch(initial.kind){
+                case TokenType.If:
+                    result.push(this.parseConditionalBlock(false)); 
+                    this.lexer.next(); break;
+                case TokenType.While:
+                    result.push(this.parseConditionalBlock(true));
+                    this.lexer.next(); break;
+                case TokenType.Return:
+                    result.push({kind: Ast.StatementType.Return, body: this.parseExpression()});
+                    break;
+                case TokenType.Identifier:{
+                    const next = this.lexer.next();
+                    if(next.kind == TokenType.Dot) result.push(this.parseMemoryStore(initial));
+                    else if(next.kind == TokenType.Colon) result.push(this.parseVarDecl(initial));
+                    else if(next.kind == TokenType.Lparen) result.push(this.parseProcedureInvokation(initial))
+                    else if(next.kind == TokenType.SingeEqual){
+                        result.push({
+                            kind: Ast.StatementType.VariableAssignment,
+                            name: initial.value,
+                            body: this.parseExpression()
+                        });
                     }else{
-                        Parser.unexpected_token(token);
+                        Parser.unexpected_token(next, "After Identifier");
                     }
                     break;
-                case TokenType.If:{
-                    const rhs = this.get_expression(Parser.comparison_tokens);
-                    const comparison = this.lexer.next().value;
-                    const lhs = this.get_expression([TokenType.Do]);
-                    this.lexer.next();
-                    const body = this.get_statements();
-                    const is_while = false
-                    this.lexer.next();
-                    result.push({
-                        kind: Ast.StatementType.ConditionalBlock,
-                        is_while: is_while,
-                        comparison_rhs: rhs,
-                        comparison_lhs: lhs,
-                        comparison_operator: comparison,
-                        body: body,
-                    });
-                    break;
                 }
-                case TokenType.While:{
-                    const rhs = this.get_expression(Parser.comparison_tokens);
-                    const comparison = this.lexer.next().value;
-                    const lhs = this.get_expression([TokenType.Do]);
-                    this.lexer.next();
-                    const body = this.get_statements();
-                    const is_while = true
-                    this.lexer.next();
-                    result.push({
-                        kind: Ast.StatementType.ConditionalBlock,
-                        is_while: is_while,
-                        comparison_rhs: rhs,
-                        comparison_lhs: lhs,
-                        comparison_operator: comparison,
-                        body: body,
-                    });
-                    break;
-                }
+                default:
+                    if(initial.kind != TokenType.Newline) Parser.unexpected_token(initial);
             }
+
         }
     }
 
-    private get_expression(until: Array<TokenType> = [TokenType.Semicolon, TokenType.Newline]): Ast.Expression{
+    parseConditionalBlock(isWhile: boolean): Ast.ConditionalBlock{
+        return {
+            comparison_lhs: this.parseExpression(Parser.comparison_tokens),
+            comparison_operator: this.lexer.next().value,
+            comparison_rhs: this.parseExpression([TokenType.Do]),
+            body: this.parseStatements([TokenType.End], true),
+            is_while: isWhile,
+            kind: Ast.StatementType.ConditionalBlock,
+        }
+    }
+    
+    parseMemoryStore(id_tk: Token): Ast.MemoryStore{
+        const result: Partial<Ast.MemoryStore> = {identifier: id_tk.value, kind: Ast.StatementType.MemoryStore};
+        const next = this.lexer.next();
+        if(next.kind == TokenType.Lparen){
+            const info = this.declared_identifiers.get(id_tk.value) ?? Parser.undeclared_identifier(id_tk);
+            result.type = info.type;
+            result.sizeof = info.sizeof_type;
+            result.offset = this.parseExpression([TokenType.Rparen])
+            this.lexer.next();
+        }else if(next.kind == TokenType.Identifier){
+            const info = this.declared_identifiers.get(next.value) ?? Parser.undeclared_identifier(next);
+            result.type = info.type;
+            result.sizeof = info.sizeof_type;
+            result.offset = next.value;
+        }else{
+            Parser.unexpected_token(next);
+        }
+        this.expect(TokenType.SingeEqual);
+        result.body = this.parseExpression();
+        return result as Ast.MemoryStore;
+    }
+
+    parseVarDecl(id_tk: Token): Ast.VariableDeclaration{
+        const type = this.parseType();
+
+        let assignment;
+        if(this.lexer.peek_next().kind == TokenType.SingeEqual){
+            this.lexer.next(); 
+            assignment = this.parseExpression();
+        }
+
+        return {
+            name: id_tk.value, 
+            kind: Ast.StatementType.VariableDeclaration,
+            type: type,
+            assignment: assignment,
+        };
+    }
+
+    /*
+    Expression Parsing Functions 
+    The parseExpression function will call the others no need to use directly
+    from statement / definition parsing at this time
+    */
+
+    parseExpression(until: Array<TokenType> = [TokenType.Semicolon, TokenType.Newline, TokenType.End]): Ast.Expression{
         const result: Ast.Expression = {body: [], type: "undefined"};
         while(true){
-            if(until.includes(this.lexer.peek_next().kind) || this.lexer.peek_next().kind == TokenType.EOF) return result;
-            const token = this.lexer.next();
-            switch(token.kind){
-                case TokenType.LiteralInt:
-                    if(result.type != "undefined" && result.type != "int") Parser.mismatched_type_error(token);
-                    result.type = "int";
-                    result.body.push({value: token.value, type: "int"}); break;
-                case TokenType.LiteralBool:
-                    if(result.type != "undefined" && result.type != "bool") Parser.mismatched_type_error(token);
-                    result.type = "bool";
-                    result.body.push({value: token.value, type: "bool"}); break;
-                case TokenType.LiteralString:
-                    if(result.type != "undefined" && result.type != "^string") Parser.mismatched_type_error(token);
-                    result.type = "string";
-                    result.body.push({value: token.value, type: "^string"}); break;
-                case TokenType.LiteralFloat:
-                    if(result.type != "undefined" && result.type != "float") Parser.mismatched_type_error(token);
-                    result.type = "float";
-                    result.body.push({value: token.value, type: "float"}); break;
-                case TokenType.Identifier:
-                    //memory load
-                    if(this.lexer.peek_next().kind == TokenType.Dot){
-                        this.lexer.next();
-                        const next = this.lexer.next();
-                        if(next.kind == TokenType.Identifier){
-                            //so here the var info we want is the next or the 'y' in the following 'x.y'
-                            //because it is a structure access operation.
-                            const info = this.declared_identifiers.get(next.value) ?? Parser.undeclared_identifier(next);
-                            result.body.push({
-                                //offset type is hardcodes as int because the offset type is the type we want to load
-                                //but the offset expression should be of type int.
-                                offset: {body: [{name: next.value, type: "int"}], type:"int"},
-                                identifier: token.value,
-                                type: info.type,
-                                sizeof: info.sizeof_type ?? 4,
-                            })
-                            result.type = info.type;
-                        }else if(next.kind == TokenType.Lparen){
-                            const offset = this.get_expression([TokenType.Rparen]);
-                            //so here the var info we want is the current token or the 'x' in the following 'x.y'
-                            //because it is a array access operation we want to load the type of the array
-                            const info = this.declared_identifiers.get(token.value) ?? Parser.undeclared_identifier(token);
-                            result.body.push({
-                                offset: offset,
-                                identifier: token.value,
-                                type: info.type,
-                                sizeof: info.sizeof_type ?? 4,
-                            })
-                            result.type = info.type;
-                            this.lexer.next();
-                        }else{
-                            Parser.unexpected_token(next);
-                        }
-                    }   
-                    //function call
-                    else if(this.lexer.peek_next().kind == TokenType.Lparen){
-                        let _ = this.lexer.next();
-                        const info = this.declared_identifiers.get(token.value) ?? Parser.undeclared_identifier(token);
-                        const args = [];
-                        if(this.lexer.peek_next().kind != TokenType.Rparen){
-                            while(true){
-                                args.push(this.get_expression([TokenType.Comma, TokenType.Rparen]))
-                                if(this.lexer.peek_next().kind == TokenType.Rparen) break;
-                                this.lexer.next()
-                            }
-                        }
-                        _ = this.lexer.next();
-                        result.body.push({name: token.value, args: args, type: info.type})
-                        result.type = info.type;      
-                    } 
-                    //normal usage
-                    else{
-                        const info = this.declared_identifiers.get(token.value) ?? Parser.undeclared_identifier(token);
-                        result.type = info.type;
-                        result.body.push({name: token.value, type: info.type});
-                        
-                    }
-                    break;
-                case TokenType.Plus: result.body.push("+"); break;
-                case TokenType.Dash: result.body.push("-"); break;
-                case TokenType.SlashForward: result.body.push("/"); break;
-                case TokenType.Asterisk: result.body.push("*"); break;
-                default:
-                    Parser.unexpected_token(token, "In expression.");
+            const initial_copy = this.lexer.peek_next()
+            if(until.includes(initial_copy.kind)) return result;
+
+            const next = this.parseExpressionNode();
+            if(next.kind != Ast.ExpressionType.BinaryOp){
+                if(result.type != "undefined" && result.type != next.type) Parser.mismatched_type_error(initial_copy);
+                result.type = next.type;
             }
+
+            result.body.push(next);
         }
     }
+
+    parseExpressionNode(): Ast.ExpressionNode{
+        const initial = this.lexer.next()
+        switch(initial.kind){
+            case TokenType.Plus: return ({operation: "+", kind: Ast.ExpressionType.BinaryOp});
+            case TokenType.Dash: return ({operation: "-", kind: Ast.ExpressionType.BinaryOp});
+            case TokenType.SlashForward: return ({operation: "/", kind: Ast.ExpressionType.BinaryOp});
+            case TokenType.Asterisk: return ({operation: "*", kind: Ast.ExpressionType.BinaryOp});
+            case TokenType.LiteralInt: return {value: initial.value, type: "int", kind: Ast.ExpressionType.Literal};
+            case TokenType.LiteralBool: return {value: initial.value, type: "bool", kind: Ast.ExpressionType.Literal};
+            case TokenType.LiteralString: return {value: initial.value, type: "^string", kind: Ast.ExpressionType.Literal};
+            case TokenType.LiteralFloat: return {value: initial.value, type: "float", kind: Ast.ExpressionType.Literal};
+            case TokenType.Identifier:{
+                const next = this.lexer.peek_next();
+
+                if(next.kind == TokenType.Dot) return this.parseMemoryLoad(initial);
+                if(next.kind == TokenType.Lparen) return this.parseProcedureInvokation(initial);
+
+                const info = this.declared_identifiers.get(initial.value) ?? Parser.undeclared_identifier(initial);
+                return {name: initial.value, type: info.type, kind: Ast.ExpressionType.VariableUsage};
+            }
+            default:
+                Parser.unexpected_token(initial, "In expression.");
+        }
+    }
+
+    parseMemoryLoad(id_tk: Token): Ast.MemoryLoad{
+        this.lexer.next();
+        const next = this.lexer.next();
+        const result: Partial<Ast.MemoryLoad> = {identifier: id_tk.value, kind: Ast.ExpressionType.MemoryLoad};
+        // x.(y): array access at pos y
+        if(next.kind == TokenType.Lparen){
+            const info = this.declared_identifiers.get(id_tk.value) ?? Parser.undeclared_identifier(id_tk);
+            result.type = info.type;
+            result.sizeof = info.sizeof_type;
+            result.offset = this.parseExpression([TokenType.Rparen])
+            this.lexer.next();
+        //x.y: structure access
+        }else if(next.kind == TokenType.Identifier){
+            const info = this.declared_identifiers.get(next.value) ?? Parser.undeclared_identifier(next);
+            result.type = info.type;
+            result.sizeof = info.sizeof_type;
+            result.offset = next.value;
+            
+        }else{
+            Parser.unexpected_token(next);
+        }
+        return result as Ast.MemoryLoad;
+    }
+
+    parseProcedureInvokation(id_tk: Token): Ast.ProcedureInvokation{  
+        const result: Partial<Ast.ProcedureInvokation> = {
+            name: id_tk.value, 
+            kind: Ast.ExpressionType.ProcedureInvokation
+        };
+
+        const info = this.declared_identifiers.get(id_tk.value) ?? Parser.undeclared_identifier(id_tk);
+        result.type = info.type;
+        const args = [];
+
+        while(this.lexer.peek_next().kind != TokenType.Rparen){
+            args.push(this.parseExpression([TokenType.Comma, TokenType.Rparen]))
+            if(this.lexer.peek_next().kind == TokenType.Rparen) break;
+            this.lexer.next()
+        }
+        this.lexer.next();
+
+        result.args = args;
+        
+        return result as Ast.ProcedureInvokation;
+    }
+
+    /*
+    Error message utility functions.
+    */
 
     private static mismatched_type_error(token: Token): never{
         console.log("ERROR: Mismatched types in expression")

@@ -119,7 +119,7 @@ export class Lexer{
 
     //while the provided function is true collect characters
     private get_characters_while(filter_function: FilterFunction): Array<string>{
-        let result = []
+        const result = []
         while(true){
             if(this.peek() == null || !filter_function(this.peek() as string)) break;
             result.push(this.char())
