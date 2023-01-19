@@ -1,8 +1,0 @@
-{
-  "name": "peacock-c",
-  "module": "main.ts",
-  "type": "module",
-  "devDependencies": {
-    "bun-types": "^0.4.0"
-  }
-}

@@ -1,6 +1,5 @@
-import { Lexer, TokenType, Token, token_repr} from "./lexer.js";
-import {exit} from "process"
-import * as Ast from "./ast.js"
+import { Lexer, TokenType, Token, token_repr} from "./lexer.ts";
+import * as Ast from "./ast.ts"
 
 
 interface IdentifierInformation{
@@ -41,7 +40,7 @@ export class Parser{
         const token = this.lexer.next()
         const result: Ast.AST = [];
         switch(token.kind){
-            case TokenType.Proc:
+            case TokenType.Proc:{
                 const name = this.lexer.next().value;
                 let is_public = false
                 if(this.lexer.peek_next().kind == TokenType.Pub){
@@ -61,6 +60,7 @@ export class Parser{
                     kind: Ast.DefintionType.Procedure,
                 });
                 this.lexer.next();
+            }
                
         }
         return result;
@@ -101,7 +101,7 @@ export class Parser{
     }
 
     private get_statements(until: Array<TokenType> = [TokenType.End]): Array<Ast.Statement>{
-        let result: Array<Ast.Statement> = [];
+        const result: Array<Ast.Statement> = [];
         while(true){
             if(until.includes(this.lexer.peek_next().kind) || this.lexer.peek_next().kind == TokenType.EOF) return result;
             const token = this.lexer.next();
@@ -202,7 +202,7 @@ export class Parser{
     }
 
     private get_expression(until: Array<TokenType> = [TokenType.Semicolon, TokenType.Newline]): Ast.Expression{
-        let result: Ast.Expression = {body: [], type: "undefined"};
+        const result: Ast.Expression = {body: [], type: "undefined"};
         while(true){
             if(until.includes(this.lexer.peek_next().kind) || this.lexer.peek_next().kind == TokenType.EOF) return result;
             const token = this.lexer.next();
@@ -226,7 +226,7 @@ export class Parser{
                 case TokenType.Identifier:
                     //memory load
                     if(this.lexer.peek_next().kind == TokenType.Dot){
-                        let _ = this.lexer.next();
+                        this.lexer.next();
                         const next = this.lexer.next();
                         if(next.kind == TokenType.Identifier){
                             //so here the var info we want is the next or the 'y' in the following 'x.y'
@@ -253,7 +253,7 @@ export class Parser{
                                 sizeof: info.sizeof_type ?? 4,
                             })
                             result.type = info.type;
-                            let _ = this.lexer.next();
+                            this.lexer.next();
                         }else{
                             Parser.unexpected_token(next);
                         }
@@ -267,7 +267,7 @@ export class Parser{
                             while(true){
                                 args.push(this.get_expression([TokenType.Comma, TokenType.Rparen]))
                                 if(this.lexer.peek_next().kind == TokenType.Rparen) break;
-                                let _ = this.lexer.next()
+                                this.lexer.next()
                             }
                         }
                         _ = this.lexer.next();
@@ -295,19 +295,16 @@ export class Parser{
     private static mismatched_type_error(token: Token): never{
         console.log("ERROR: Mismatched types in expression")
         console.log(token_repr(token))
-        exit(1);
-        throw new Error("Unreachable if you are seeing this there is a bug");
+        Deno.exit(1);
     }
     private static undeclared_identifier(token: Token): never{
         console.log("ERROR: Undeclared Identifier")
         console.log(token_repr(token))
-        exit(1);
-        throw new Error("Unreachable if you are seeing this there is a bug");
+        Deno.exit(1);
     }
     private static unexpected_token(token: Token, extra?:string): never{
         console.log("ERROR: Unexpected Token " + (extra !== undefined ? extra : ""))
         console.log(token_repr(token))
-        exit(1);
-        throw new Error("Unreachable if you are seeing this there is a bug");
+        Deno.exit(1);
     }
 }

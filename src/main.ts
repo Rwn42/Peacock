@@ -1,6 +1,5 @@
-import { argv, exit } from "process"
-import {Lexer, TokenType, Token, token_repr} from "./lexer.js"
-import * as Parsing from "./parser.js"
+import {Lexer, TokenType, token_repr} from "./lexer.ts"
+import * as Parsing from "./parser.ts"
 
 //config interface for cli
 interface Config{
@@ -20,14 +19,14 @@ const compilation_targets = ["pvm", "wasm32"];
 //prints the error message and exits the program
 const print_error = function(msg: string) {
     console.error(msg);
-    exit(1)
+    Deno.exit(1)
 }
 
 const main = async function(){
-    if(argv.length < 3){
+    if(Deno.args.length < 1){
         print_error("ERROR: No Input File Specified");
     }
-    const user_arguments = argv.slice(2);
+    const user_arguments = Deno.args
 
     //default configuration options
     const config: Config = {input_file: user_arguments[0], action: "-c", output_file: "output", target: "pvm"}
@@ -53,7 +52,7 @@ const main = async function(){
 
     if(config.input_file == "--help") print_help();
 
-    const filestring = await Bun.file(config.input_file).text();
+    const filestring = await Deno.readTextFile(config.input_file);
     const lexer = new Lexer(filestring, config.input_file);
 
     //save lexer output to a file
@@ -65,7 +64,7 @@ const main = async function(){
             if(tk.kind == TokenType.Newline) continue;
             output_content += token_repr(tk) + "\n";
         }
-        await Bun.write(Bun.file(config.output_file + ".txt"), output_content);
+        await Deno.writeTextFile(config.output_file + ".txt", output_content);
         return;
     }
 
@@ -74,7 +73,7 @@ const main = async function(){
     //save ast to file
     if(config.action == "-p"){
         const ast_str = ast.map(item => JSON.stringify(item, null, 4));
-        await Bun.write(Bun.file(config.output_file + ".json"), ast_str.join(""));
+        await Deno.writeTextFile(config.output_file + ".json", ast_str.join(""));
         return;
     }
     
