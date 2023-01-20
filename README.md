@@ -11,4 +11,5 @@ to try the new bun JavaScript runtime (now using deno). I still plan on rewritin
 - Linear Memory syntax
 - AST output is presented in readable json
 - Since we are using Deno compiler can be built as single (bulky) executable
+- Global memory supported (in parsing stage only so far)
 

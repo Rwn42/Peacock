@@ -29,6 +29,9 @@ export enum TokenType{
     Proc,
     End,
     Return,
+    Memory,
+    Alloc,
+    Struct,
     Pub,
     Newline,
     EOF,
@@ -60,6 +63,9 @@ const keywords = new Map<string, TokenType>([
     ["proc", TokenType.Proc],
     ["return", TokenType.Return],
     ["pub", TokenType.Pub],
+    ["memory", TokenType.Memory],
+    ["alloc", TokenType.Alloc],
+    ["struct", TokenType.Struct],
 ])
 
 

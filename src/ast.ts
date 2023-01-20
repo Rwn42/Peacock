@@ -1,7 +1,7 @@
 //---AST Type Defintions: Expressions---
 
 export enum ExpressionType{
-    ProcedureInvokation,
+    ProcedureInvokation, //THIS HAS TO BE FIRST BECAUSE ITS USED IN ANOTHER ENUM THAT STARTS AT 1
     Literal,
     VariableUsage,
     MemoryLoad,
@@ -53,11 +53,12 @@ export interface Expression{
 //---Ast Type Defintions: Statements---
 
 export enum StatementType{
-    ConditionalBlock,
+    ConditionalBlock = 1,
     VariableDeclaration,
     VariableAssignment,
     Return,
     MemoryStore,
+    MemoryDeclaration,
 }
 
 export interface ConditionalBlock{
@@ -98,6 +99,17 @@ export interface MemoryStore{
     kind: StatementType.MemoryStore,
 }
 
+//can be in statement or defintion
+//if encountered in procedure will be assumed a statement
+export interface MemoryDeclaration{
+    name: string,
+    type: string,
+    sizeof: number,
+    amount: Expression,
+    cleanup: boolean
+    kind: StatementType | DefintionType,
+}
+
 
 
 export type Statement = 
@@ -106,6 +118,7 @@ export type Statement =
     | VariableDeclaration
     | MemoryStore
     | ProcedureInvokation
+    | MemoryDeclaration
     | Return;
 
 //----------------------------------//
@@ -119,6 +132,8 @@ export interface NameTypePair {
 
 export enum DefintionType{
     Procedure,
+    MemoryDeclaration,
+    StructureDefinition
 }   
 
 export interface Procedure{
@@ -131,9 +146,15 @@ export interface Procedure{
     kind: DefintionType.Procedure
 }
 
+export interface StructureDefinition{
+    kind: DefintionType.StructureDefinition,
+    name: string,
+    fields: Array<NameTypePair>,
+}
 
 
-export type Definition = Procedure
+
+export type Definition = Procedure | MemoryDeclaration | StructureDefinition;
 
 //----------------------------------//
 

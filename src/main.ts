@@ -72,8 +72,8 @@ const main = async function(){
 
     //save ast to file
     if(config.action == "-p"){
-        const ast_str = ast.map(item => JSON.stringify(item, null, 4));
-        await Deno.writeTextFile(config.output_file + ".json", ast_str.join(""));
+        const ast_str = JSON.stringify({"ast": ast}, null, 4)
+        await Deno.writeTextFile(config.output_file + ".json", ast_str);
         return;
     }
     

@@ -9,15 +9,15 @@ interface IdentifierInformation{
 /*
 TODO:
 Static analysis
-remove declared identifiers after function body is over
-add memory keyword (perhaps static so its exists after function)
-structures, enumerations
+enumerations
+support for x.(0).y (array of structs)
 */
 
 export class Parser{
     lexer: Lexer
     declared_identifiers: Map<string, IdentifierInformation>
-
+    declared_types: Map<string, number>
+    addedLocals: string[]
     static comparison_tokens = [
         TokenType.LessThan, TokenType.GreaterThan,
         TokenType.DoubleEqual, TokenType.NotEqual,
@@ -27,26 +27,34 @@ export class Parser{
     constructor(lexer: Lexer){
         this.lexer = lexer;
         this.declared_identifiers = new Map();
+        this.addedLocals = [];
+        this.declared_types = new Map();
     }
 
     expect(expectKind: TokenType): Token{
         const token = this.lexer.next();
+        if(token.kind == TokenType.Newline) return this.expect(expectKind);
         if(token.kind != expectKind) Parser.unexpected_token(token);
         return token;
     }
 
     parse(): Ast.AST{
-        const token = this.lexer.next()
         const result: Ast.AST = [];
 
-        switch(token.kind){
-            case TokenType.Pub:
-                result.push(this.parseProcedureDefinition(true)); break;
-            case TokenType.Proc:
-                    result.push(this.parseProcedureDefinition(false)); break;
-               
+        while(this.lexer.peek_next().kind != TokenType.EOF){
+            const token = this.lexer.next()
+            switch(token.kind){
+                case TokenType.Pub:
+                    result.push(this.parseProcedureDefinition(true)); break;
+                case TokenType.Proc:
+                        result.push(this.parseProcedureDefinition(false)); break;
+                case TokenType.Memory:
+                    result.push(this.parseMemoryDeclaration(true, false));  break;
+                case TokenType.Struct:
+                    result.push(this.parseStructureDefinition()); break;
+                case TokenType.Newline: break;
+            }
         }
-
         return result;
     }
 
@@ -59,6 +67,7 @@ export class Parser{
         if(is_public) this.expect(TokenType.Proc);
 
         const name = this.expect(TokenType.Identifier).value
+        this.expect(TokenType.Lparen);
         const args = this.parseParams();
         const return_type = this.lexer.peek_next().kind == TokenType.Do ? undefined : this.parseType();
         this.lexer.next();
@@ -67,7 +76,9 @@ export class Parser{
 
         const body = this.parseStatements();
         this.lexer.next();
-       
+        
+        this.addedLocals.forEach(local => this.declared_identifiers.delete(local));
+        args.forEach(arg => this.declared_identifiers.delete(arg.name));
 
         return{
             body: body,
@@ -80,12 +91,25 @@ export class Parser{
         
     }
 
-    private parseParams(): Array<Ast.NameTypePair>{
+    parseStructureDefinition(): Ast.StructureDefinition{
+        const name = this.expect(TokenType.Identifier).value
+        const fields = this.parseParams(TokenType.Comma, TokenType.End);
+        this.lexer.next();
+
+        const size = 4 * fields.length;
+        this.declared_types.set(name, size);
+
+        return {
+            name: name,
+            kind: Ast.DefintionType.StructureDefinition,
+            fields: fields,
+        }
+    }
+
+    private parseParams(delimiter = TokenType.Comma, end = TokenType.Rparen): Array<Ast.NameTypePair>{
         const args: Array<Ast.NameTypePair> = [];
 
-        this.expect(TokenType.Lparen);
-
-        while(this.lexer.peek_next().kind != TokenType.Rparen){
+        while(this.lexer.peek_next().kind != end){
             const name = this.expect(TokenType.Identifier).value
             this.expect(TokenType.Colon)
             const type = this.parseType()
@@ -93,10 +117,10 @@ export class Parser{
             args.push({name:name, type: type})
 
             this.declared_identifiers.set(name, {type: type})
+            if(this.lexer.peek_next().kind == end) break;
 
-            if(this.lexer.peek_next().kind == TokenType.Rparen) break;
-
-            this.expect(TokenType.Comma);
+            this.expect(delimiter);
+            if(this.lexer.peek_next().kind == TokenType.Newline){this.lexer.next(); continue}
         }
         this.lexer.next();
         return args;
@@ -133,6 +157,12 @@ export class Parser{
                 case TokenType.While:
                     result.push(this.parseConditionalBlock(true));
                     this.lexer.next(); break;
+                case TokenType.Memory:
+                    result.push(this.parseMemoryDeclaration(true, true))
+                    break;
+                case TokenType.Alloc:
+                        result.push(this.parseMemoryDeclaration(false, true))
+                        break;
                 case TokenType.Return:
                     result.push({kind: Ast.StatementType.Return, body: this.parseExpression()});
                     break;
@@ -153,7 +183,10 @@ export class Parser{
                     break;
                 }
                 default:
-                    if(initial.kind != TokenType.Newline) Parser.unexpected_token(initial);
+                    if(initial.kind != TokenType.Newline && initial.kind != TokenType.Semicolon){
+                        Parser.unexpected_token(initial);
+                    } 
+                        
             }
 
         }
@@ -192,6 +225,29 @@ export class Parser{
         return result as Ast.MemoryStore;
     }
 
+    //if cleanup is true the compiler will "free" the memory at the function end
+    //if not it will be left so it can be returned from the function
+    parseMemoryDeclaration(cleanup: boolean, is_local: boolean): Ast.MemoryDeclaration{
+        const name = this.expect(TokenType.Identifier).value;
+        const type = this.parseType();
+        this.declared_identifiers.set(name, {type: type, sizeof_type: this.declared_types.get(type) ?? 4})
+
+        let kind: Ast.StatementType | Ast.DefintionType = Ast.DefintionType.MemoryDeclaration;
+        if(is_local){
+            this.addedLocals.push(name);
+            kind = Ast.StatementType.MemoryDeclaration;
+        }
+        return {
+            kind: kind,
+            name: name,
+            type: "^" + type,
+            sizeof: this.declared_types.get(type) ?? 4,
+            amount: this.parseExpression(),
+            cleanup: cleanup,
+        }
+      
+    }
+
     parseVarDecl(id_tk: Token): Ast.VariableDeclaration{
         const type = this.parseType();
 
@@ -200,6 +256,9 @@ export class Parser{
             this.lexer.next(); 
             assignment = this.parseExpression();
         }
+
+        this.declared_identifiers.set(id_tk.value, {type: type});
+        this.addedLocals.push(id_tk.value);
 
         return {
             name: id_tk.value, 
