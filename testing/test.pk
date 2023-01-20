@@ -3,7 +3,9 @@ struct Vec2
     y: float,
 end
 
+const x: int = 10
+
 pub proc main() do
     memory point Vec2 1;
-    point.(0).x = 10
+    point.x = 10
 end

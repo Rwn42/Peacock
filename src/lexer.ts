@@ -32,6 +32,7 @@ export enum TokenType{
     Memory,
     Alloc,
     Struct,
+    Const,
     Pub,
     Newline,
     EOF,
@@ -66,6 +67,8 @@ const keywords = new Map<string, TokenType>([
     ["memory", TokenType.Memory],
     ["alloc", TokenType.Alloc],
     ["struct", TokenType.Struct],
+    ["const", TokenType.Const],
+
 ])
 
 

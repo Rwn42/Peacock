@@ -133,7 +133,8 @@ export interface NameTypePair {
 export enum DefintionType{
     Procedure,
     MemoryDeclaration,
-    StructureDefinition
+    StructureDefinition,
+    ConstantDefinition,
 }   
 
 export interface Procedure{
@@ -152,9 +153,13 @@ export interface StructureDefinition{
     fields: Array<NameTypePair>,
 }
 
+export interface ConstantDeclaration{
+    kind: DefintionType.ConstantDefinition,
+    declaration: VariableDeclaration,
+}
 
 
-export type Definition = Procedure | MemoryDeclaration | StructureDefinition;
+export type Definition = Procedure | MemoryDeclaration | StructureDefinition | ConstantDeclaration;
 
 //----------------------------------//
 

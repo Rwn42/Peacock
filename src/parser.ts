@@ -8,7 +8,6 @@ interface IdentifierInformation{
 }
 /*
 TODO:
-Static analysis
 enumerations
 support for x.(0).y (array of structs)
 */
@@ -52,6 +51,9 @@ export class Parser{
                     result.push(this.parseMemoryDeclaration(true, false));  break;
                 case TokenType.Struct:
                     result.push(this.parseStructureDefinition()); break;
+                case TokenType.Const:
+                    result.push(this.parseConstantDefinition());
+                    break;
                 case TokenType.Newline: break;
             }
         }
@@ -89,6 +91,15 @@ export class Parser{
             kind: Ast.DefintionType.Procedure,
         };
         
+    }
+
+    parseConstantDefinition(): Ast.ConstantDeclaration{
+        const id_tk = this.lexer.next();
+        this.expect(TokenType.Colon);
+        return{
+            kind: Ast.DefintionType.ConstantDefinition,
+            declaration: this.parseVarDecl(id_tk, false),
+        };
     }
 
     parseStructureDefinition(): Ast.StructureDefinition{
@@ -248,7 +259,7 @@ export class Parser{
       
     }
 
-    parseVarDecl(id_tk: Token): Ast.VariableDeclaration{
+    parseVarDecl(id_tk: Token, local=true): Ast.VariableDeclaration{
         const type = this.parseType();
 
         let assignment;
@@ -258,7 +269,7 @@ export class Parser{
         }
 
         this.declared_identifiers.set(id_tk.value, {type: type});
-        this.addedLocals.push(id_tk.value);
+        if(local) this.addedLocals.push(id_tk.value);
 
         return {
             name: id_tk.value, 
