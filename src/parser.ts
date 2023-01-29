@@ -52,8 +52,7 @@ export class Parser{
                 case TokenType.Struct:
                     result.push(this.parseStructureDefinition()); break;
                 case TokenType.Const:
-                    result.push(this.parseConstantDefinition());
-                    break;
+                    result.push(this.parseConstantDefinition()); break;
                 case TokenType.Newline: break;
             }
         }
