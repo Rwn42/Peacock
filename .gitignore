@@ -1,0 +1,4 @@
+.vscode
+*.wasm
+output.*
+run.sh

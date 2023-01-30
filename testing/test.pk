@@ -1,0 +1,6 @@
+environment print(i: float)
+
+pub proc main() int do
+    print(10.2)
+    return 10;
+end
