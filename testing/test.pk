@@ -1,11 +1,6 @@
-struct Vec2
-    x: int,
-    y: float,
-end
+environment print(i: float)
 
-const x: int = 10
-
-pub proc main() do
-    memory point Vec2 1;
-    point.x = 10
+pub proc main() int do
+    print(10.2)
+    return 10;
 end

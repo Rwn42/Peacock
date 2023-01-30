@@ -46,13 +46,15 @@ export class Parser{
                 case TokenType.Pub:
                     result.push(this.parseProcedureDefinition(true)); break;
                 case TokenType.Proc:
-                        result.push(this.parseProcedureDefinition(false)); break;
+                    result.push(this.parseProcedureDefinition(false)); break;
                 case TokenType.Memory:
                     result.push(this.parseMemoryDeclaration(true, false));  break;
                 case TokenType.Struct:
                     result.push(this.parseStructureDefinition()); break;
                 case TokenType.Const:
                     result.push(this.parseConstantDefinition()); break;
+                case TokenType.Environment:
+                    result.push(this.parseEnvironmentDeclaration()); break;
                 case TokenType.Newline: break;
             }
         }
@@ -90,6 +92,25 @@ export class Parser{
             kind: Ast.DefintionType.Procedure,
         };
         
+    }
+
+    parseEnvironmentDeclaration(): Ast.EnvironmentDeclaration{
+        const name = this.expect(TokenType.Identifier).value
+        this.expect(TokenType.Lparen);
+        const args = this.parseParams();
+        const return_type = this.lexer.peek_next().kind == (TokenType.Newline || TokenType.Semicolon) ? undefined : this.parseType();
+        this.lexer.next();
+
+        this.declared_identifiers.set(name, {type: return_type || ""});
+
+        return{
+            name: name, 
+            params: args || null, 
+            return_type: return_type, 
+            kind: Ast.DefintionType.EnvironmentDeclaration,
+        };
+        
+
     }
 
     parseConstantDefinition(): Ast.ConstantDeclaration{

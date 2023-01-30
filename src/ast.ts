@@ -135,6 +135,7 @@ export enum DefintionType{
     MemoryDeclaration,
     StructureDefinition,
     ConstantDefinition,
+    EnvironmentDeclaration,
 }   
 
 export interface Procedure{
@@ -158,8 +159,20 @@ export interface ConstantDeclaration{
     declaration: VariableDeclaration,
 }
 
+export interface EnvironmentDeclaration{
+    name: string,
+    params?: Array<NameTypePair>
+    return_type?: string,
+    kind: DefintionType.EnvironmentDeclaration
+}
 
-export type Definition = Procedure | MemoryDeclaration | StructureDefinition | ConstantDeclaration;
+
+export type Definition = 
+    |Procedure
+    | MemoryDeclaration
+    | StructureDefinition
+    | ConstantDeclaration
+    | EnvironmentDeclaration;
 
 //----------------------------------//
 

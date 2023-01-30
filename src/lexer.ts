@@ -36,6 +36,7 @@ export enum TokenType{
     Pub,
     Newline,
     EOF,
+    Environment,
 }
 
 export interface Token{
@@ -68,6 +69,7 @@ const keywords = new Map<string, TokenType>([
     ["alloc", TokenType.Alloc],
     ["struct", TokenType.Struct],
     ["const", TokenType.Const],
+    ["environment", TokenType.Environment],
 
 ])
 

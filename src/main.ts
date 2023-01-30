@@ -1,4 +1,5 @@
 import {Lexer, TokenType, token_repr} from "./lexer.ts"
+import { CompileASTToWasm } from "./wasmc.ts"
 import * as Parsing from "./parser.ts"
 
 //config interface for cli
@@ -76,6 +77,8 @@ const main = async function(){
         await Deno.writeTextFile(config.output_file + ".json", ast_str);
         return;
     }
+
+    CompileASTToWasm(ast, config.output_file);
     
 
 }
