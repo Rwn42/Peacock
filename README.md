@@ -1,18 +1,64 @@
 # Peacock
-This branch is a WIP rewrite of the Python codebase to TypeScript.
-I switched to TypeScript because Pythons static typing was becoming frusterating and I wanted a reason
-to try the new bun JavaScript runtime (now using deno). I still plan on rewriting the compiler in a compiled language.
+A small language that compiles to WebAssembly. Served as a learning experience to learn about how WebAssembly works.
 
+## Hello, World
+```ruby
+environment puts(s: ^string)
 
-## Overview (based on current parser implementation may change when compiler is complete)
+pub proc main() do
+    #strings not yet supported :)
+    puts("Hello, World!")
+end
+```
 
-## Constants
+## Overview
+
+## Expressions
+Expressions are in reverse polish notation
+```ruby
+1 2 + #the same as 1 + 2 in other languages
+```
+
+## Control Flow
+```ruby
+if a 1 + == b do
+    ...
+end
+
+while a < b do
+    ...
+end
+```
+
+## Variables
+```
+x: int = 10 2 +
+```
+
+### Procedures
+```ruby
+proc add(x: int, y: int) int do
+    return x y +; #semicolon optional
+end
+
+#use pub to make a function accesible by the host environment
+pub proc add(x: int, y:int) int ...
+```
+
+### Environment
+To call functions from the host environment declare them with the following:
+```ruby
+environment add(x: int, y: int) int 
+#this can now be used like a normal function in the code
+```
+
+### Constants
 constants must be outside of any block
 ```ruby
 const x: int = 10 2 +
 ```
 
-## Structures
+### Structures
 A struct is Peacocks way of structuring data (structs currently do not support function members)
 Syntax sugar may be added in the future for initializing structs
 
@@ -31,7 +77,7 @@ proc main() do
 end
 ```
 
-## Memory
+### Memory
 The `memory` keyword allocates some space in the memory and returns the pointer to the start of that space.
 `alloc` does the same but does not clean up the memory for you (use when returning memory from functions).
 
@@ -47,7 +93,7 @@ end
 
 the `memory` keyword, but not `alloc`, can also be used globally so any function can access it.
 
-## Arrays
+### Arrays
 
 Arrays in Peacock make use the memory and alloc keywords.
 ```ruby
