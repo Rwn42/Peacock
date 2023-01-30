@@ -21,9 +21,11 @@ export class WasmCompiler{
         this.constant_identifiers = [];
         this.memory_head = 4;
         this.loops_added = 0;
+    }
 
-        for(const node_key in ast){
-            const node = ast[node_key];
+    async compile(){
+        for(const node_key in this.ast){
+            const node = this.ast[node_key];
             switch(node.kind){
                 case Ast.DefintionType.Procedure:
                     this.compileProcedure(node as Ast.Procedure);
@@ -32,7 +34,7 @@ export class WasmCompiler{
                     this.compileEnvironment(node as Ast.EnvironmentDeclaration);
                     break;
                 case Ast.DefintionType.ConstantDefinition:
-                    this.compileConstant(node as Ast.ConstantDeclaration);
+                    await this.compileConstant(node as Ast.ConstantDeclaration);
                     break;
                     
             }
@@ -93,10 +95,12 @@ export class WasmCompiler{
         this.imports.push(`(import "env" "${node.name}" ${signature} ))`);
     }
 
-    compileConstant(node: Ast.ConstantDeclaration){
+    async compileConstant(node: Ast.ConstantDeclaration){
         const {name, type, assignment} = node.declaration;
         this.constant_identifiers.push(name);
-        this.constants.push(`(global $${name} ${wasmType(type)} (${comptimeEval(assignment as Ast.Expression)}))`);
+        const assign = assignment as Ast.Expression;
+        const value = await this.comptimeEval(assign);
+        this.constants.push(`(global $${name} ${wasmType(type)} (${wasmType(assign.type)}.const ${value}))`);
     }
 
     compileStatement(node: Ast.Statement): string{
@@ -187,11 +191,12 @@ export class WasmCompiler{
                     this.string_literals.push('"' + node.value + '"');
 
                     result.push(`global.get $mem_head`);
-
+                    
+                    //push the string `struct values` into linear memory
                     result.push(this.linear_write_num("i32", this.memory_head));
                     result.push(this.linear_write_num("i32", node.value.length));
                     
-                    //push the string `struct values` into linear memory
+                    
                     
                     //increment comptime memory head by string length
                     this.memory_head += node.value.length;
@@ -204,6 +209,36 @@ export class WasmCompiler{
         });
         return result.join("\n")
     }
+    //TODO get wasm2wat path from config
+    async comptimeEval(expr: Ast.Expression): Promise<number>{
+        const source_text = `
+        (module
+            (export "main"(func $main))
+            ${this.constants.join("\n")}
+            (func $main (result ${wasmType(expr.type)})
+                ${this.compileExpression(expr)}
+            )
+        )
+        `;
+
+        await Deno.writeTextFile("comptime.wat", source_text);
+
+        const p = Deno.run({cmd: ["/home/rwn/tools/wabt-1.0.32/bin/wat2wasm", "./comptime.wat"]});
+        await p.status()
+
+        const wasmFile = await Deno.readFile("comptime.wasm");
+        const module = new WebAssembly.Module(wasmFile)
+        const instance = new WebAssembly.Instance(module, {});
+        
+        const func = instance.exports.main as CallableFunction;
+        const res: number = func();
+
+        Deno.remove("comptime.wat")
+        Deno.remove("comptime.wasm")
+
+        return res
+    }
+
 }
 
 function compileComparisonOperator(op: string, type: string): string {
@@ -243,9 +278,7 @@ function compileBinaryOp(op: Ast.BinaryOp, wasmType:string): string{
     }  
 }
 
-function comptimeEval(expr: Ast.Expression): number | string{
-    return `${wasmType(expr.type)}.const ${10}`;
-}
+
 
 
 

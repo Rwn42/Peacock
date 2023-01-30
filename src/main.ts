@@ -80,6 +80,7 @@ const main = async function(){
 
     if(config.target == "wasm32"){
         const wasmCompiler = new WasmCompiler(ast);
+        await wasmCompiler.compile();
         saveAsWat(wasmCompiler, config.output_file);
         return;
     }
