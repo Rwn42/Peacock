@@ -78,24 +78,26 @@ end
 ```
 
 ### Memory
-The `memory` keyword allocates some space in the memory and returns the pointer to the start of that space.
-`alloc` does the same but does not clean up the memory for you (use when returning memory from functions).
+The `memory` keyword allocates some space in the memory and returns the pointer to the start of that space. The memory is invalidated at the end of the function therefore you cannot currently return anything that is not a primitive type from a function. 
 
 ```ruby
 proc main() do
     #makes room for one hundred ints
-    alloc some_ints int 100
+    #the one hundred does not have to be constant the language supports "dynamic allocation"
+    #it just gets invalidated at function end
 
-    #since we used alloc this is ok to do
+    memory some_ints int 100
+
+    #NOT ALLOWED
     return some_ints
 end
 ```
 
-the `memory` keyword, but not `alloc`, can also be used globally so any function can access it.
+the `memory` keyword can be used at the top level for every function to access
 
 ### Arrays
 
-Arrays in Peacock make use the memory and alloc keywords.
+Arrays in Peacock make use the memory keyword.
 ```ruby
 memory int_array int 100
 int_array.(0) 

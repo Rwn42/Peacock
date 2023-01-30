@@ -30,7 +30,6 @@ export enum TokenType{
     End,
     Return,
     Memory,
-    Alloc,
     Struct,
     Const,
     Pub,
@@ -66,7 +65,6 @@ const keywords = new Map<string, TokenType>([
     ["return", TokenType.Return],
     ["pub", TokenType.Pub],
     ["memory", TokenType.Memory],
-    ["alloc", TokenType.Alloc],
     ["struct", TokenType.Struct],
     ["const", TokenType.Const],
     ["environment", TokenType.Environment],
@@ -168,16 +166,19 @@ export class Lexer{
                 this.get_characters_while((x)=> x != "\n");
                 this.advance()
                 return this.next()
-            case ">": 
+            case "<": 
                 token.kind = (this.peek() == "=" ? TokenType.LessThanEqual : TokenType.LessThan);
+                if(token.kind == TokenType.LessThanEqual)
                 token.value += this.char();
                 break;
-            case "<":
+            case ">":
                 token.kind = (this.peek() == "=" ? TokenType.GreaterThanEqual : TokenType.GreaterThan);
+                if(token.kind == TokenType.GreaterThanEqual)
                 token.value += this.char();
                 break;
             case "=":
                 token.kind = (this.peek() == "=" ? TokenType.DoubleEqual : TokenType.SingeEqual);
+                if(token.kind == TokenType.DoubleEqual)
                 token.value += this.char();
                 break;
             case "!":

@@ -1,5 +1,5 @@
 import {Lexer, TokenType, token_repr} from "./lexer.ts"
-import { CompileASTToWasm } from "./wasmc.ts"
+import { WasmCompiler, saveAsWat } from "./wasmc.ts"
 import * as Parsing from "./parser.ts"
 
 //config interface for cli
@@ -30,7 +30,7 @@ const main = async function(){
     const user_arguments = Deno.args
 
     //default configuration options
-    const config: Config = {input_file: user_arguments[0], action: "-c", output_file: "output", target: "pvm"}
+    const config: Config = {input_file: user_arguments[0], action: "-c", output_file: "output", target: "wasm32"}
 
 
     //add any specified compiler options
@@ -78,7 +78,11 @@ const main = async function(){
         return;
     }
 
-    CompileASTToWasm(ast, config.output_file);
+    if(config.target == "wasm32"){
+        const wasmCompiler = new WasmCompiler(ast);
+        saveAsWat(wasmCompiler, config.output_file);
+        return;
+    }
     
 
 }

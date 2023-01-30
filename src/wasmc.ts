@@ -1,107 +1,208 @@
 import * as Ast from "./ast.ts";
 
-export function CompileASTToWasm(ast: Ast.AST, output_path: string){
-    const procs = [];
-    const constants = [];
-    const public_signatures = [];
-    const externalFunctions = []
+export class WasmCompiler{
+    ast: Ast.AST;
+    functions: Array<string>;
+    exports: Array<string>;
+    imports: Array<string>;
+    constants: Array<string>;
+    string_literals: Array<string>;
+    constant_identifiers: Array<string>;
+    memory_head: number;
+    loops_added: number
 
-    for(const node_key in ast){
-        const node = ast[node_key];
-        switch(node.kind){
-            case Ast.DefintionType.Procedure:{
-                const [proc, pub_sig] = compileProcedure(node as Ast.Procedure);
-                procs.push(proc);
-                public_signatures.push(pub_sig);
-                break;
-            }
-            case Ast.DefintionType.EnvironmentDeclaration:{
-                const casted_node = node as Ast.EnvironmentDeclaration;
-                let signature = `(func $${node.name} `;
-                casted_node.params?.forEach(param => {
-                    signature += `(param $${param.name} ${wasmType(param.type)})`
-                })
-                if(casted_node.return_type) signature += `(result ${wasmType(casted_node.return_type)})`;
-                
-                externalFunctions.push(`(import "env" "${node.name}" ${signature} ))`);
-                break;
-            }
-            case Ast.DefintionType.ConstantDefinition:{
-                break;
+    constructor(ast: Ast.AST){
+        this.ast = ast;
+        this.functions = [];
+        this.exports = [];
+        this.imports = [];
+        this.constants = [];
+        this.string_literals = [];
+        this.constant_identifiers = [];
+        this.memory_head = 4;
+        this.loops_added = 0;
+
+        for(const node_key in ast){
+            const node = ast[node_key];
+            switch(node.kind){
+                case Ast.DefintionType.Procedure:
+                    this.compileProcedure(node as Ast.Procedure);
+                    break;
+                case Ast.DefintionType.EnvironmentDeclaration:
+                    this.compileEnvironment(node as Ast.EnvironmentDeclaration);
+                    break;
+                case Ast.DefintionType.ConstantDefinition:
+                    this.compileConstant(node as Ast.ConstantDeclaration);
+                    break;
+                    
             }
         }
     }
 
-    const result = 
-    '(module\n' +
-    externalFunctions.join("\n") +
-    "(memory 1)\n" +
-    '(export "memory" (memory 0))\n' +
-    public_signatures.join("\n") +
-    procs.join("\n") + ")";
-    //EXTERN SIGNATURES HERE BEFORE MEMORY
-    Deno.writeTextFile(output_path, result);
-}
+    //UTILITY
 
-function compileProcedure(node: Ast.Procedure): Array<string>{
-    let proc_code = `(func $${node.name}\n`
-    const public_signature = `(export "${node.name}"` + proc_code + '))\n';
-    node.params?.forEach(param => {
-        proc_code += `(param $${param.name} ${wasmType(param.type)})`
-    })
-    if(node.return_type) proc_code += `(result ${wasmType(node.return_type)})\n`;
+    linear_write_num(wasm_type: string, value: number): string{
+        let write_code = `global.get $mem_head\n${wasm_type}.const ${value}\n`;
+        write_code += `${wasm_type}.store\n`;
+        let memory_inc = `i32.const 4\nglobal.get $mem_head i32.add\n`;
+        memory_inc += "global.set $mem_head\n";
+        return write_code + memory_inc;
+    }
+
+    compileProcedure(proc: Ast.Procedure){
+        const proc_code = [`(func $${proc.name}`];
+        const public_signature = `(export "${proc.name}"` + proc_code + '))\n';
+
+        proc.params?.forEach(
+            param => 
+            proc_code.push(`(param $${param.name} ${wasmType(param.type)})`)
+        );
+
+        if(proc.return_type) 
+            proc_code.push(`(result ${wasmType(proc.return_type)})`);
+        
+
+        const decls = proc.body.filter(s => s.kind == Ast.StatementType.VariableDeclaration);
+        decls.forEach( node => {
+            const decl = node as Ast.VariableDeclaration;
+            proc_code.push(`(local $${decl.name} ${wasmType(decl.type)})`)
+        });   
     
-   
 
-    node.body.forEach(statement => proc_code += compileStatement(statement) + " \n");
+        //the reason for the get and set between the body is to restore
+        //the mem head to its previous position (freeing memory used by the proc)
+        proc_code.push("global.get $mem_head");
+        proc.body.forEach(
+            statement => proc_code.push(this.compileStatement(statement))
+        );
+        proc_code.push("global.set  $mem_head")
 
-    proc_code += ")";
+        proc_code.push(")");
 
-    return [proc_code, node.is_public ? public_signature : ""];
-}
+        if(proc.is_public) this.exports.push(public_signature);
+        this.functions.push(proc_code.join("\n"));
+    }
 
-function compileStatement(node: Ast.Statement): string{
-    switch(node.kind){
-        case Ast.StatementType.Return:
-            return compileExpression((node as Ast.Return).body) + "return";
-        case Ast.StatementType.VariableDeclaration:{
-            let result = `(local $${node.name} ${wasmType(node.type)})\n`;
-            if((node as Ast.VariableDeclaration).assignment){
-                result += compileExpression((node as Ast.VariableDeclaration).assignment as Ast.Expression);
-                result += `\nlocal.set $${node.name} \n`;
-            } 
-            return result;
-        }
-        case Ast.StatementType.VariableAssignment: {
-            let result = ""
-            result += compileExpression((node as Ast.VariableAssignment).body);
-            result += `\nlocal.set $${node.name} \n`;
-            return result;
-        }
-        case Ast.StatementType.ConditionalBlock: {
-            node = node as Ast.ConditionalBlock;
-            let result = "";
-            if(node.is_while){
-                result += "(loop"
-                result += node.body.map(s => compileStatement(s)).join("\n");
-                result += compileExpression(node.comparison_lhs);
-                result += compileExpression(node.comparison_rhs);
-                result += compileComparisonOperator(node.comparison_operator, node.comparison_lhs.type);
-            }else{
-                result += compileExpression(node.comparison_lhs);
-                result += compileExpression(node.comparison_rhs);
-                result += compileComparisonOperator(node.comparison_operator, node.comparison_lhs.type);
-                result += "(if (then\n"
-                result += node.body.map(s => compileStatement(s)).join("\n");
-                result += ")\n"
+    compileEnvironment(node: Ast.EnvironmentDeclaration){
+        let signature = `(func $${node.name} `;
+        node.params?.forEach(param => {
+            signature += `(param $${param.name} ${wasmType(param.type)})`
+        })
+        if(node.return_type) signature += `(result ${wasmType(node.return_type)})`;
+        
+        this.imports.push(`(import "env" "${node.name}" ${signature} ))`);
+    }
+
+    compileConstant(node: Ast.ConstantDeclaration){
+        const {name, type, assignment} = node.declaration;
+        this.constant_identifiers.push(name);
+        this.constants.push(`(global $${name} ${wasmType(type)} (${comptimeEval(assignment as Ast.Expression)}))`);
+    }
+
+    compileStatement(node: Ast.Statement): string{
+        const result: Array<string> = [];
+        switch(node.kind){
+            case Ast.StatementType.Return:
+                result.push(this.compileExpression((node as Ast.Return).body))
+                result.push("return");
+                break;
+            case Ast.ExpressionType.ProcedureInvokation:{
+                const pi = node as Ast.ProcedureInvokation;
+                pi.args.forEach(arg => result.push(this.compileExpression(arg)));
+                result.push(`call $${pi.name}`);
+                break;
             }
-            result += ")\n"
-            return result;
+
+            case Ast.StatementType.VariableDeclaration:{
+                const decl = node as Ast.VariableDeclaration;
+                if(decl.assignment){
+                    result.push(this.compileExpression((decl).assignment as Ast.Expression));
+                    result.push(`\nlocal.set $${node.name}`);
+                }
+                break;
+            }
+            case Ast.StatementType.VariableAssignment:{
+                const assign = node as Ast.VariableAssignment;
+                result.push(this.compileExpression((assign).body as Ast.Expression));
+                result.push(`\nlocal.set $${node.name}`);
+                break;
+            }
+            case Ast.StatementType.ConditionalBlock:{
+                result.push(this.compileConditional(node as Ast.ConditionalBlock));
+            }
         }
-        case Ast.ExpressionType.ProcedureInvokation:
-            return compileProcedureInvokation(node);
-        default:
-            Deno.exit(1);
+        return result.join("\n")
+    }
+    
+    compileConditional(node: Ast.ConditionalBlock): string{
+        const result = [];
+        if(node.is_while){
+            const loop_id = this.loops_added++;
+            result.push(`(loop $${loop_id}`);
+            node.body.forEach(s => result.push(this.compileStatement(s)));
+            result.push(this.compileExpression(node.comparison_lhs))
+            result.push(this.compileExpression(node.comparison_rhs))
+            result.push(compileComparisonOperator(
+                node.comparison_operator, node.comparison_lhs.type
+            ));
+            result.push(`br_if $${loop_id}`)
+        }else{
+            result.push(this.compileExpression(node.comparison_lhs))
+            result.push(this.compileExpression(node.comparison_rhs))
+            result.push(compileComparisonOperator(
+                node.comparison_operator, node.comparison_lhs.type
+            ));
+            result.push("(if");
+            result.push("(then");
+            node.body.forEach(s => result.push(this.compileStatement(s)));
+            result.push(")");
+        }
+        result.push(")");
+        return result.join("\n");
+    }
+
+    compileExpression(expr: Ast.Expression){
+        const result: Array<string> = [];
+        expr.body.forEach(node => {
+            switch(node.kind){
+                case Ast.ExpressionType.BinaryOp: 
+                    result.push(compileBinaryOp(node, wasmType(expr.type)));
+                    break;
+                case Ast.ExpressionType.VariableUsage:
+                    if(this.constant_identifiers.includes(node.name)){
+                        result.push(`global.get $${node.name}`);
+                    }else{
+                        result.push(`local.get $${node.name}`);
+                    }
+                    break;
+                case Ast.ExpressionType.ProcedureInvokation:
+                    node.args.forEach(arg => result.push(this.compileExpression(arg)));
+                    result.push(`call $${node.name}`);
+                    break;
+                case Ast.ExpressionType.Literal:
+                    if(node.type != "^string"){
+                        result.push(`${wasmType(node.type)}.const ${node.value}\n`);
+                        break;
+                    }
+                    this.string_literals.push('"' + node.value + '"');
+
+                    result.push(`global.get $mem_head`);
+
+                    result.push(this.linear_write_num("i32", this.memory_head));
+                    result.push(this.linear_write_num("i32", node.value.length));
+                    
+                    //push the string `struct values` into linear memory
+                    
+                    //increment comptime memory head by string length
+                    this.memory_head += node.value.length;
+                    break;
+                case Ast.ExpressionType.MemoryLoad:
+                    console.error("Memory Load Not Implemented. ");
+                    Deno.exit(1);
+                    break;
+            }
+        });
+        return result.join("\n")
     }
 }
 
@@ -126,46 +227,44 @@ function compileComparisonOperator(op: string, type: string): string {
     }
 }
 
-function compileExpression(node: Ast.Expression): string{
-    const result: Array<string> = [];
-    node.body.forEach(exprNode => {
-        switch(exprNode.kind){
-            case Ast.ExpressionType.Literal:
-                if(exprNode.type == "^string"){
-                    console.log("Strings Not Yet Supported!");
-                    Deno.exit(1);
-                }
-                result.push(`${wasmType(exprNode.type)}.const ${exprNode.value}\n`); break;
-            case Ast.ExpressionType.BinaryOp:{
-                switch(exprNode.operation){
-                    case "+":
-                        result.push(`${wasmType(node.type)}.add\n`); break;
-                    case "-":
-                        result.push(`${wasmType(node.type)}.sub\n`); break;
-                    case "*":
-                        result.push(`${wasmType(node.type)}.mul\n`); break;
-                    case "/":
-                        result.push(`${wasmType(node.type)}.div\n`); break;
-                }
-                break;
-            }
-            case Ast.ExpressionType.VariableUsage:
-                result.push(`local.get $${exprNode.name}\n`); break;
-            case Ast.ExpressionType.ProcedureInvokation:
-                compileProcedureInvokation(exprNode);
-
-        }
-    });
-    return result.join("\n")
+function compileBinaryOp(op: Ast.BinaryOp, wasmType:string): string{
+    switch(op.operation){
+        case "+":
+            return `${wasmType}.add`;
+        case "-":
+            return `${wasmType}.sub`;
+        case "*":
+            return `${wasmType}.mul`;
+        case "/":
+            return `${wasmType}.div`;
+        default:
+            console.error("Unimplemented Binary Operation ", op.operation);
+            Deno.exit(1);
+    }  
 }
 
-function compileProcedureInvokation(node: Ast.ProcedureInvokation): string{
-    let result = node.args.map(arg => compileExpression(arg)).join("");
-    result += `call $${node.name}\n`;
-    return result;
+function comptimeEval(expr: Ast.Expression): number | string{
+    return `${wasmType(expr.type)}.const ${10}`;
 }
+
+
+
 
 function wasmType(type: string): string{
     if(type == "float") return "f32";
     return "i32";
+}
+
+
+export function saveAsWat(compiler: WasmCompiler, filepath: string){
+    let result = '(module\n';
+    result += compiler.imports.join("\n");
+    result += "(memory 1)\n";
+    result += '(export "memory" (memory 0))\n';
+    result += compiler.exports.join("\n");
+    result += compiler.constants.join("\n");
+    result += `\n(global $mem_head (mut i32) (i32.const ${compiler.memory_head})) \n`;
+    result += `(data (i32.const 4) ${compiler.string_literals.join(' ')})\n`;
+    result += compiler.functions.join("\n") + ")";
+    Deno.writeTextFile(filepath + ".wat", result);
 }

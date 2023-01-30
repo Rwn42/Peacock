@@ -106,7 +106,6 @@ export interface MemoryDeclaration{
     type: string,
     sizeof: number,
     amount: Expression,
-    cleanup: boolean
     kind: StatementType | DefintionType,
 }
 

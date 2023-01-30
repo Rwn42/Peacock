@@ -1,6 +1,11 @@
-environment print(i: float)
+environment puts(s: ^string)
+environment puti(i: int)
+environment putf(f: float)
 
-pub proc main() int do
-    print(10.2)
-    return 10;
+const x: int = 10;
+
+pub proc main() do
+    puts("Hello, World!")
+    puts("Done")
+    puti(x)
 end

@@ -48,7 +48,7 @@ export class Parser{
                 case TokenType.Proc:
                     result.push(this.parseProcedureDefinition(false)); break;
                 case TokenType.Memory:
-                    result.push(this.parseMemoryDeclaration(true, false));  break;
+                    result.push(this.parseMemoryDeclaration(false));  break;
                 case TokenType.Struct:
                     result.push(this.parseStructureDefinition()); break;
                 case TokenType.Const:
@@ -189,11 +189,9 @@ export class Parser{
                     result.push(this.parseConditionalBlock(true));
                     this.lexer.next(); break;
                 case TokenType.Memory:
-                    result.push(this.parseMemoryDeclaration(true, true))
+                    result.push(this.parseMemoryDeclaration(true))
                     break;
-                case TokenType.Alloc:
-                        result.push(this.parseMemoryDeclaration(false, true))
-                        break;
+
                 case TokenType.Return:
                     result.push({kind: Ast.StatementType.Return, body: this.parseExpression()});
                     break;
@@ -258,7 +256,7 @@ export class Parser{
 
     //if cleanup is true the compiler will "free" the memory at the function end
     //if not it will be left so it can be returned from the function
-    parseMemoryDeclaration(cleanup: boolean, is_local: boolean): Ast.MemoryDeclaration{
+    parseMemoryDeclaration(is_local: boolean): Ast.MemoryDeclaration{
         const name = this.expect(TokenType.Identifier).value;
         const type = this.parseType();
         this.declared_identifiers.set(name, {type: type, sizeof_type: this.declared_types.get(type) ?? 4})
@@ -274,7 +272,6 @@ export class Parser{
             type: "^" + type,
             sizeof: this.declared_types.get(type) ?? 4,
             amount: this.parseExpression(),
-            cleanup: cleanup,
         }
       
     }
