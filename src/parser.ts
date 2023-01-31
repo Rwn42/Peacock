@@ -360,7 +360,10 @@ export class Parser{
                 const next = this.lexer.peek_next();
 
                 if(next.kind == TokenType.Dot) return this.parseMemoryLoad(initial);
-                if(next.kind == TokenType.Lparen) return this.parseProcedureInvokation(initial);
+                if(next.kind == TokenType.Lparen) {
+                    this.lexer.next();
+                    return this.parseProcedureInvokation(initial);
+                }
 
                 const info = this.declared_identifiers.get(initial.value) ?? Parser.undeclared_identifier(initial);
                 return {name: initial.value, type: info.type, kind: Ast.ExpressionType.VariableUsage};
@@ -403,7 +406,6 @@ export class Parser{
         const info = this.declared_identifiers.get(id_tk.value) ?? Parser.undeclared_identifier(id_tk);
         result.type = info.type;
         const args = [];
-
         while(this.lexer.peek_next().kind != TokenType.Rparen){
             args.push(this.parseExpression([TokenType.Comma, TokenType.Rparen]))
             if(this.lexer.peek_next().kind == TokenType.Rparen) break;

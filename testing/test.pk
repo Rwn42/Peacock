@@ -1,8 +1,11 @@
-include "hello"
+include "stdlib"
 
-
+proc return_a_message() ^string do
+    return "Hello, World"
+end
 
 pub proc main() do
-    puts("Hello, World!")
-    puts("Done")
+    x: ^string = return_a_message()
+    puts(x);
 end
+
