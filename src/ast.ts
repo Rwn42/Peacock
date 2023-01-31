@@ -4,6 +4,7 @@ export enum ExpressionType{
     ProcedureInvokation, //THIS HAS TO BE FIRST BECAUSE ITS USED IN ANOTHER ENUM THAT STARTS AT 1
     Literal,
     VariableUsage,
+    MemoryAllocation,
     MemoryLoad,
     BinaryOp,
 }
@@ -27,6 +28,13 @@ export interface VariableUsage{
     kind: ExpressionType.VariableUsage,
 }
 
+export interface MemoryAllocation{
+    kind: ExpressionType.MemoryAllocation,
+    amount: Expression,
+    size_of?: number,
+    type: string,
+}
+
 export interface MemoryLoad{
     offset: Expression | string,
     identifier: string,
@@ -41,7 +49,13 @@ export interface BinaryOp{
     kind: ExpressionType.BinaryOp,
 }
 
-export type ExpressionNode = ProcedureInvokation | Literal | VariableUsage | MemoryLoad | BinaryOp
+export type ExpressionNode = 
+    |ProcedureInvokation 
+    | Literal 
+    | VariableUsage 
+    | MemoryLoad 
+    | BinaryOp
+    | MemoryAllocation
 
 export interface Expression{
     body: Array<ExpressionNode>;
@@ -58,7 +72,6 @@ export enum StatementType{
     VariableAssignment,
     Return,
     MemoryStore,
-    MemoryDeclaration,
 }
 
 export interface ConditionalBlock{
@@ -99,15 +112,6 @@ export interface MemoryStore{
     kind: StatementType.MemoryStore,
 }
 
-//can be in statement or defintion
-//if encountered in procedure will be assumed a statement
-export interface MemoryDeclaration{
-    name: string,
-    type: string,
-    sizeof: number,
-    amount: Expression,
-    kind: StatementType | DefintionType,
-}
 
 
 
@@ -117,7 +121,6 @@ export type Statement =
     | VariableDeclaration
     | MemoryStore
     | ProcedureInvokation
-    | MemoryDeclaration
     | Return;
 
 //----------------------------------//
@@ -168,7 +171,6 @@ export interface EnvironmentDeclaration{
 
 export type Definition = 
     |Procedure
-    | MemoryDeclaration
     | StructureDefinition
     | ConstantDeclaration
     | EnvironmentDeclaration;

@@ -1,11 +1,12 @@
 include "stdlib"
 
-proc return_a_message() ^string do
-    return "Hello, World"
+struct Vec2
+    x: int,
+    y: int,
 end
 
 pub proc main() do
-    x: ^string = return_a_message()
-    puts(x);
+    point: ^Vec2 = memory 1
+    something: ^int = memory 1
 end
 

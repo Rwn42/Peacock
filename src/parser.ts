@@ -48,8 +48,6 @@ export class Parser{
                     result.push(this.parseProcedureDefinition(true)); break;
                 case TokenType.Proc:
                     result.push(this.parseProcedureDefinition(false)); break;
-                case TokenType.Memory:
-                    result.push(this.parseMemoryDeclaration(false));  break;
                 case TokenType.Struct:
                     result.push(this.parseStructureDefinition()); break;
                 case TokenType.Const:
@@ -215,10 +213,6 @@ export class Parser{
                 case TokenType.While:
                     result.push(this.parseConditionalBlock(true));
                     this.lexer.next(); break;
-                case TokenType.Memory:
-                    result.push(this.parseMemoryDeclaration(true))
-                    break;
-
                 case TokenType.Return:
                     result.push({kind: Ast.StatementType.Return, body: this.parseExpression()});
                     break;
@@ -281,28 +275,6 @@ export class Parser{
         return result as Ast.MemoryStore;
     }
 
-    //if cleanup is true the compiler will "free" the memory at the function end
-    //if not it will be left so it can be returned from the function
-    parseMemoryDeclaration(is_local: boolean): Ast.MemoryDeclaration{
-        const name = this.expect(TokenType.Identifier).value;
-        const type = this.parseType();
-        this.declared_identifiers.set(name, {type: type, sizeof_type: this.declared_types.get(type) ?? 4})
-
-        let kind: Ast.StatementType | Ast.DefintionType = Ast.DefintionType.MemoryDeclaration;
-        if(is_local){
-            this.addedLocals.push(name);
-            kind = Ast.StatementType.MemoryDeclaration;
-        }
-        return {
-            kind: kind,
-            name: name,
-            type: "^" + type,
-            sizeof: this.declared_types.get(type) ?? 4,
-            amount: this.parseExpression(),
-        }
-      
-    }
-
     parseVarDecl(id_tk: Token, local=true): Ast.VariableDeclaration{
         const type = this.parseType();
 
@@ -310,6 +282,12 @@ export class Parser{
         if(this.lexer.peek_next().kind == TokenType.SingeEqual){
             this.lexer.next(); 
             assignment = this.parseExpression();
+            if(assignment.body[0].kind == Ast.ExpressionType.MemoryAllocation){
+                assignment.body[0].type = type;
+                let size = this.declared_types.get(type.substring(1,));
+                if(!size) size = 4;
+                assignment.body[0].size_of = size;
+            }
         }
 
         this.declared_identifiers.set(id_tk.value, {type: type});
@@ -367,6 +345,15 @@ export class Parser{
 
                 const info = this.declared_identifiers.get(initial.value) ?? Parser.undeclared_identifier(initial);
                 return {name: initial.value, type: info.type, kind: Ast.ExpressionType.VariableUsage};
+            }
+            case TokenType.Memory:{
+                const amount_expr = this.parseExpression();
+                return {
+                    kind: Ast.ExpressionType.MemoryAllocation,
+                    size_of: 4,
+                    amount: amount_expr,
+                    type: "unknown pointer",
+                }
             }
             default:
                 Parser.unexpected_token(initial, "In expression.");

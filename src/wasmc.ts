@@ -201,6 +201,15 @@ export class WasmCompiler{
                     //increment comptime memory head by string length
                     this.memory_head += node.value.length;
                     break;
+                case Ast.ExpressionType.MemoryAllocation:
+                    result.push("global.get $mem_head");
+                    result.push(this.compileExpression(node.amount));
+                    result.push(`i32.const ${node.size_of}`)
+                    result.push("i32.mul")
+                    result.push("global.get $mem_head")
+                    result.push("i32.add")
+                    result.push("global.set $mem_head");
+                    break;
                 case Ast.ExpressionType.MemoryLoad:
                     console.error("Memory Load Not Implemented. ");
                     Deno.exit(1);
