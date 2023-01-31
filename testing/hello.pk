@@ -1,0 +1,3 @@
+environment puts(s: ^string)
+environment puti(i: int)
+environment putf(f: float)

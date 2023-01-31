@@ -1,12 +1,8 @@
-environment puts(s: ^string)
-environment puti(i: int)
-environment putf(f: float)
+include "hello"
 
-const y: int = 34;
-const x: int = 10 y +;
+
 
 pub proc main() do
     puts("Hello, World!")
     puts("Done")
-    puti(x)
 end

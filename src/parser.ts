@@ -1,5 +1,6 @@
 import { Lexer, TokenType, Token, token_repr} from "./lexer.ts";
 import * as Ast from "./ast.ts"
+import { basename } from "https://deno.land/std@0.175.0/path/mod.ts";
 
 
 interface IdentifierInformation{
@@ -55,6 +56,10 @@ export class Parser{
                     result.push(this.parseConstantDefinition()); break;
                 case TokenType.Environment:
                     result.push(this.parseEnvironmentDeclaration()); break;
+                case TokenType.Include:
+                    result.push(...this.parseInclude()); break;
+                case TokenType.EOF:
+                    return result;
                 case TokenType.Newline: break;
             }
         }
@@ -94,13 +99,35 @@ export class Parser{
         
     }
 
+    parseInclude(): Ast.AST{
+        const import_file = this.expect(TokenType.LiteralString).value + ".pk";
+        const filepath = Deno
+        .realPathSync(this.lexer.filename)
+        .replace(basename(this.lexer.filename), import_file);
+        const filestring = Deno.readTextFileSync(filepath);
+        const l = new Lexer(filestring, filepath);
+        const p = new Parser(l);
+        const result = p.parse();
+        for(const [key, value] of p.declared_identifiers.entries()){
+            this.declared_identifiers.set(key, value);
+        }
+        return result;
+
+    }
+
     parseEnvironmentDeclaration(): Ast.EnvironmentDeclaration{
         const name = this.expect(TokenType.Identifier).value
         this.expect(TokenType.Lparen);
         const args = this.parseParams();
-        const return_type = this.lexer.peek_next().kind == (TokenType.Newline || TokenType.Semicolon) ? undefined : this.parseType();
-        this.lexer.next();
-
+        const next_kind = this.lexer.peek_next().kind;
+        let return_type = undefined;
+        if(next_kind == TokenType.Newline || next_kind == TokenType.Semicolon || next_kind == TokenType.EOF){
+            return_type = undefined;
+            this.lexer.next();
+        }else{
+            return_type = this.parseType();
+        }
+        
         this.declared_identifiers.set(name, {type: return_type || ""});
 
         return{
