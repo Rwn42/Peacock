@@ -152,7 +152,12 @@ export class Parser{
         const fields = this.parseParams(TokenType.Comma, TokenType.End);
         this.lexer.next();
 
-        const size = 4 * fields.length;
+        //computing size
+        let size = 0;
+        fields.forEach(field => {
+            size += this.declared_types.get(field.type) || 4;
+        });
+
         this.declared_types.set(name, size);
 
         return {

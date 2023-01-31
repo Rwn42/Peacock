@@ -73,11 +73,11 @@ export class WasmCompiler{
 
         //the reason for the get and set between the body is to restore
         //the mem head to its previous position (freeing memory used by the proc)
-        //proc_code.push("global.get $mem_head");
+        proc_code.push("global.get $mem_head");
         proc.body.forEach(
             statement => proc_code.push(this.compileStatement(statement))
         );
-        //proc_code.push("global.set  $mem_head")
+        if(!proc.return_type) proc_code.push("global.set  $mem_head");
 
         proc_code.push(")");
 
@@ -107,6 +107,7 @@ export class WasmCompiler{
         const result: Array<string> = [];
         switch(node.kind){
             case Ast.StatementType.Return:
+                result.push("global.set $mem_head");
                 result.push(this.compileExpression((node as Ast.Return).body))
                 result.push("return");
                 break;

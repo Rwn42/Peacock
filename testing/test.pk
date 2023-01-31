@@ -5,8 +5,9 @@ struct Vec2
     y: int,
 end
 
-pub proc main() do
-    point: ^Vec2 = memory 1
-    something: ^int = memory 1
+
+struct Person
+    age: int,
+    position: Vec2,
 end
 
