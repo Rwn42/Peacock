@@ -47,7 +47,7 @@ pub proc add(x: int, y:int) int ...
 ### Environment
 To call functions from the host environment declare them with the following:
 ```ruby
-environment add(x: int, y: int) int 
+external add(x: int, y: int) int 
 #this can now be used like a normal function in the code
 ```
 

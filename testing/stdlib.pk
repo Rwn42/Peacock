@@ -1,0 +1,3 @@
+external puts(s: ^string)
+external puti(i: int)
+external putf(f: float)

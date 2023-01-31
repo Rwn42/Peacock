@@ -69,7 +69,7 @@ const keywords = new Map<string, TokenType>([
     ["struct", TokenType.Struct],
     ["const", TokenType.Const],
     ["include", TokenType.Include],
-    ["environment", TokenType.Environment],
+    ["external", TokenType.Environment],
 
 ])
 
