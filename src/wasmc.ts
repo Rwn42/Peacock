@@ -77,7 +77,7 @@ export class WasmCompiler{
         proc.body.forEach(
             statement => proc_code.push(this.compileStatement(statement))
         );
-        if(!proc.return_type) proc_code.push("global.set  $mem_head");
+        if(!proc.return_type || !proc.return_type.startsWith("^")) proc_code.push("global.set  $mem_head");
 
         proc_code.push(")");
 
@@ -201,19 +201,6 @@ export class WasmCompiler{
                     
                     //increment comptime memory head by string length
                     this.memory_head += node.value.length;
-                    break;
-                case Ast.ExpressionType.MemoryAllocation:
-                    result.push("global.get $mem_head");
-                    result.push(this.compileExpression(node.amount));
-                    result.push(`i32.const ${node.size_of}`)
-                    result.push("i32.mul")
-                    result.push("global.get $mem_head")
-                    result.push("i32.add")
-                    result.push("global.set $mem_head");
-                    break;
-                case Ast.ExpressionType.MemoryLoad:
-                    console.error("Memory Load Not Implemented. ");
-                    Deno.exit(1);
                     break;
             }
         });

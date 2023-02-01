@@ -16,7 +16,6 @@ support for x.(0).y (array of structs)
 export class Parser{
     lexer: Lexer
     declared_identifiers: Map<string, IdentifierInformation>
-    declared_types: Map<string, number>
     addedLocals: string[]
     static comparison_tokens = [
         TokenType.LessThan, TokenType.GreaterThan,
@@ -28,7 +27,7 @@ export class Parser{
         this.lexer = lexer;
         this.declared_identifiers = new Map();
         this.addedLocals = [];
-        this.declared_types = new Map();
+        
     }
 
     expect(expectKind: TokenType): Token{
@@ -49,7 +48,7 @@ export class Parser{
                 case TokenType.Proc:
                     result.push(this.parseProcedureDefinition(false)); break;
                 case TokenType.Struct:
-                    result.push(this.parseStructureDefinition()); break;
+                    this.parseStructureDefinition(); break;
                 case TokenType.Const:
                     result.push(this.parseConstantDefinition()); break;
                 case TokenType.Environment:
@@ -147,24 +146,9 @@ export class Parser{
         };
     }
 
-    parseStructureDefinition(): Ast.StructureDefinition{
-        const name = this.expect(TokenType.Identifier).value
-        const fields = this.parseParams(TokenType.Comma, TokenType.End);
-        this.lexer.next();
-
-        //computing size
-        let size = 0;
-        fields.forEach(field => {
-            size += this.declared_types.get(field.type) || 4;
-        });
-
-        this.declared_types.set(name, size);
-
-        return {
-            name: name,
-            kind: Ast.DefintionType.StructureDefinition,
-            fields: fields,
-        }
+    parseStructureDefinition(){
+        console.log("Not Implemented")
+        Deno.exit(1)
     }
 
     private parseParams(delimiter = TokenType.Comma, end = TokenType.Rparen): Array<Ast.NameTypePair>{
@@ -223,8 +207,7 @@ export class Parser{
                     break;
                 case TokenType.Identifier:{
                     const next = this.lexer.next();
-                    if(next.kind == TokenType.Dot) result.push(this.parseMemoryStore(initial));
-                    else if(next.kind == TokenType.Colon) result.push(this.parseVarDecl(initial));
+                    if(next.kind == TokenType.Colon) result.push(this.parseVarDecl(initial));
                     else if(next.kind == TokenType.Lparen) result.push(this.parseProcedureInvokation(initial))
                     else if(next.kind == TokenType.SingeEqual){
                         result.push({
@@ -257,28 +240,6 @@ export class Parser{
             kind: Ast.StatementType.ConditionalBlock,
         }
     }
-    
-    parseMemoryStore(id_tk: Token): Ast.MemoryStore{
-        const result: Partial<Ast.MemoryStore> = {identifier: id_tk.value, kind: Ast.StatementType.MemoryStore};
-        const next = this.lexer.next();
-        if(next.kind == TokenType.Lparen){
-            const info = this.declared_identifiers.get(id_tk.value) ?? Parser.undeclared_identifier(id_tk);
-            result.type = info.type;
-            result.sizeof = info.sizeof_type;
-            result.offset = this.parseExpression([TokenType.Rparen])
-            this.lexer.next();
-        }else if(next.kind == TokenType.Identifier){
-            const info = this.declared_identifiers.get(next.value) ?? Parser.undeclared_identifier(next);
-            result.type = info.type;
-            result.sizeof = info.sizeof_type;
-            result.offset = next.value;
-        }else{
-            Parser.unexpected_token(next);
-        }
-        this.expect(TokenType.SingeEqual);
-        result.body = this.parseExpression();
-        return result as Ast.MemoryStore;
-    }
 
     parseVarDecl(id_tk: Token, local=true): Ast.VariableDeclaration{
         const type = this.parseType();
@@ -287,12 +248,6 @@ export class Parser{
         if(this.lexer.peek_next().kind == TokenType.SingeEqual){
             this.lexer.next(); 
             assignment = this.parseExpression();
-            if(assignment.body[0].kind == Ast.ExpressionType.MemoryAllocation){
-                assignment.body[0].type = type;
-                let size = this.declared_types.get(type.substring(1,));
-                if(!size) size = 4;
-                assignment.body[0].size_of = size;
-            }
         }
 
         this.declared_identifiers.set(id_tk.value, {type: type});
@@ -342,7 +297,6 @@ export class Parser{
             case TokenType.Identifier:{
                 const next = this.lexer.peek_next();
 
-                if(next.kind == TokenType.Dot) return this.parseMemoryLoad(initial);
                 if(next.kind == TokenType.Lparen) {
                     this.lexer.next();
                     return this.parseProcedureInvokation(initial);
@@ -352,41 +306,13 @@ export class Parser{
                 return {name: initial.value, type: info.type, kind: Ast.ExpressionType.VariableUsage};
             }
             case TokenType.Memory:{
-                const amount_expr = this.parseExpression();
-                return {
-                    kind: Ast.ExpressionType.MemoryAllocation,
-                    size_of: 4,
-                    amount: amount_expr,
-                    type: "unknown pointer",
-                }
+                console.log("NOT IMPLEMENTED");
+                Deno.exit(1);
+                break;
             }
             default:
                 Parser.unexpected_token(initial, "In expression.");
         }
-    }
-
-    parseMemoryLoad(id_tk: Token): Ast.MemoryLoad{
-        this.lexer.next();
-        const next = this.lexer.next();
-        const result: Partial<Ast.MemoryLoad> = {identifier: id_tk.value, kind: Ast.ExpressionType.MemoryLoad};
-        // x.(y): array access at pos y
-        if(next.kind == TokenType.Lparen){
-            const info = this.declared_identifiers.get(id_tk.value) ?? Parser.undeclared_identifier(id_tk);
-            result.type = info.type;
-            result.sizeof = info.sizeof_type;
-            result.offset = this.parseExpression([TokenType.Rparen])
-            this.lexer.next();
-        //x.y: structure access
-        }else if(next.kind == TokenType.Identifier){
-            const info = this.declared_identifiers.get(next.value) ?? Parser.undeclared_identifier(next);
-            result.type = info.type;
-            result.sizeof = info.sizeof_type;
-            result.offset = next.value;
-            
-        }else{
-            Parser.unexpected_token(next);
-        }
-        return result as Ast.MemoryLoad;
     }
 
     parseProcedureInvokation(id_tk: Token): Ast.ProcedureInvokation{  

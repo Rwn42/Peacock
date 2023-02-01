@@ -14,7 +14,8 @@ const customEnvironment = {
         const bytes = new Uint8Array(instance.exports.memory.buffer, start, length);
         const string = new TextDecoder("utf8").decode(bytes);
         console.log(string);
-    }
+    },
+
 }
 
 const wasmFile = await Deno.readFile("./environments/output.wasm");

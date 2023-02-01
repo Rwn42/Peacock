@@ -1,13 +1,11 @@
 include "stdlib"
 
-struct Vec2
-    x: int,
-    y: int,
+
+proc main2() ^string do
+    return "hello"
 end
 
-
-struct Person
-    age: int,
-    position: Vec2,
+pub proc main() do
+    puts(main2())
 end
 

@@ -4,8 +4,6 @@ export enum ExpressionType{
     ProcedureInvokation, //THIS HAS TO BE FIRST BECAUSE ITS USED IN ANOTHER ENUM THAT STARTS AT 1
     Literal,
     VariableUsage,
-    MemoryAllocation,
-    MemoryLoad,
     BinaryOp,
 }
 
@@ -28,22 +26,6 @@ export interface VariableUsage{
     kind: ExpressionType.VariableUsage,
 }
 
-export interface MemoryAllocation{
-    kind: ExpressionType.MemoryAllocation,
-    amount: Expression,
-    size_of?: number,
-    type: string,
-}
-
-export interface MemoryLoad{
-    offset: Expression | string,
-    identifier: string,
-    type: string,
-    //multiplier for offset not size of load
-    sizeof: number,
-    kind: ExpressionType.MemoryLoad,
-}
-
 export interface BinaryOp{
     operation: string,
     kind: ExpressionType.BinaryOp,
@@ -53,9 +35,7 @@ export type ExpressionNode =
     |ProcedureInvokation 
     | Literal 
     | VariableUsage 
-    | MemoryLoad 
     | BinaryOp
-    | MemoryAllocation
 
 export interface Expression{
     body: Array<ExpressionNode>;
@@ -71,7 +51,6 @@ export enum StatementType{
     VariableDeclaration,
     VariableAssignment,
     Return,
-    MemoryStore,
 }
 
 export interface ConditionalBlock{
@@ -102,16 +81,6 @@ export interface Return{
     kind: StatementType.Return,
 }
 
-export interface MemoryStore{
-    identifier: string,
-    offset: Expression | string,
-    body: Expression,
-    //multiplier for offset not size of load (for now)
-    sizeof: number,
-    type: string, 
-    kind: StatementType.MemoryStore,
-}
-
 
 
 
@@ -119,7 +88,6 @@ export type Statement =
     | ConditionalBlock
     | VariableAssignment
     | VariableDeclaration
-    | MemoryStore
     | ProcedureInvokation
     | Return;
 
@@ -134,8 +102,6 @@ export interface NameTypePair {
 
 export enum DefintionType{
     Procedure,
-    MemoryDeclaration,
-    StructureDefinition,
     ConstantDefinition,
     EnvironmentDeclaration,
 }   
@@ -150,11 +116,6 @@ export interface Procedure{
     kind: DefintionType.Procedure
 }
 
-export interface StructureDefinition{
-    kind: DefintionType.StructureDefinition,
-    name: string,
-    fields: Array<NameTypePair>,
-}
 
 export interface ConstantDeclaration{
     kind: DefintionType.ConstantDefinition,
@@ -170,8 +131,7 @@ export interface EnvironmentDeclaration{
 
 
 export type Definition = 
-    |Procedure
-    | StructureDefinition
+    | Procedure
     | ConstantDeclaration
     | EnvironmentDeclaration;
 
