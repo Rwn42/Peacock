@@ -60,8 +60,10 @@ export class WasmCompiler{
             proc_code.push(`(param $${param.name} ${wasmType(param.type)})`)
         );
 
-        if(proc.return_type) 
+        if(proc.return_type) {
             proc_code.push(`(result ${wasmType(proc.return_type)})`);
+        }
+            
         
 
         const decls = proc.body.filter(s => s.kind == Ast.StatementType.VariableDeclaration);
@@ -293,7 +295,7 @@ export function saveAsWat(compiler: WasmCompiler, filepath: string){
     result += '(export "memory" (memory 0))\n';
     result += compiler.exports.join("\n");
     result += compiler.constants.join("\n");
-    result += `\n(global $mem_head (mut i32) (i32.const ${compiler.memory_head})) \n`;
+    result += `\n(global $mem_head (export "mem_head") (mut i32) (i32.const ${compiler.memory_head})) \n`;
     result += `(data (i32.const 4) ${compiler.string_literals.join(' ')})\n`;
     result += compiler.functions.join("\n") + ")";
     Deno.writeTextFile(filepath + ".wat", result);

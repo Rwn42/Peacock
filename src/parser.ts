@@ -126,7 +126,7 @@ export class Parser{
         }
         
         this.declared_identifiers.set(name, {type: return_type || ""});
-
+        
         return{
             name: name, 
             params: args || null, 

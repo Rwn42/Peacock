@@ -1,11 +1,8 @@
 include "stdlib"
 
-
-proc main2() ^string do
-    return "hello"
-end
-
 pub proc main() do
-    puts(main2())
+    payload: ^string = "<h1>Hello, World</h1>"
+    startServer(payload);
 end
+
 

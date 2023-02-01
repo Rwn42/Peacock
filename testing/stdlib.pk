@@ -1,3 +1,9 @@
 external puts(s: ^string)
 external puti(i: int)
 external putf(f: float)
+
+external alloc(amount: int, size: int) int
+external read(location: int) int
+external write(location: int, value: int)
+
+external startServer(homePagePointer: ^string)
